@@ -65,6 +65,16 @@ Why should we *not* do this?
 
 Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406). This RFC introduces a new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax takes the form `impl Trait for Type { use expression; }`, where `expression` resolves to a value implementing `Trait`.
 
+Prohibited patterns: delegation of associated constants ([?]()), delegation of associated types ([?]()).<br>
+Proposed extensions: renaming ([?]()), `Self` type mapping ([?]()), multiple traits ([?]()),  delegation of enums ([?]()), arbitrary parent context ([?]()).
+
+#### Reasons for proposal rejection
+
+_Unclear semantics:_ the mechanism for callee resolution is not defined. TODO: continue<br>
+_syntax concerns:_  TODO: continue
+
+You can check Boat's [summary](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112) for more information.
+
 ### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
 
 ## Unresolved questions
