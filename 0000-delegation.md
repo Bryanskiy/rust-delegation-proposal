@@ -63,17 +63,22 @@ Why should we *not* do this?
 
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
-Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406). This RFC introduces a new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax takes the form `impl Trait for Type { use expression; }`, where `expression` resolves to a value implementing `Trait`.
+Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406).
+
+#### Scope
+
+This RFC introduces a new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax takes the form `impl Trait for Type { use expression; }`, where `expression` resolves to a value implementing `Trait`.
 
 Prohibited patterns: delegation of associated constants ([?]()), delegation of associated types ([?]()).<br>
 Proposed extensions: renaming ([?]()), `Self` type mapping ([?]()), multiple traits ([?]()),  delegation of enums ([?]()), arbitrary parent context ([?]()).
 
 #### Reasons for proposal rejection
 
-_Unclear semantics:_ the mechanism for callee resolution is not defined. TODO: continue<br>
-_syntax concerns:_  TODO: continue
+_Unclear semantics._ The mechanism for callee resolution is not defined. It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
 
-You can check Boat's [summary](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112) for more information.
+_Forward compatibility._ Insufficient evidence that the proposed design could be cleanly extended to future delegation features without breaking semantics, requiring redesign or altering syntax.
+
+You can also check Boat's [summary](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
 
 ### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
 
