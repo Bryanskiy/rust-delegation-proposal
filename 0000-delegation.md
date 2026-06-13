@@ -7,105 +7,69 @@
 ## Summary
 [summary]: #summary
 
-One paragraph explanation of the feature.
+Provide a syntactic sugar to automatically forward function calls.
+
+TODO: maybe something else? Should be filled last anyway.
 
 ## Motivation
 [motivation]: #motivation
 
-Any changes to Rust should focus on solving a problem that users of Rust are having.
-This section should explain this problem in detail, including necessary background.
-
-It should also contain several specific use cases where this feature can help a user, and explain how it helps.
-This can then be used to guide the design of the feature.
-
-This section is one of the most important sections of any RFC, and can be lengthy.
+TODO
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Explain the proposal as if it was already included in the language and you were teaching it to another Rust programmer. That generally means:
-
-- Introducing new named concepts.
-- Explaining the feature largely in terms of examples.
-- Explaining how Rust programmers should *think* about the feature, and how it should impact the way they use Rust. It should explain the impact as concretely as possible.
-- If applicable, provide sample error messages, deprecation warnings, or migration guidance.
-- If applicable, describe the differences between teaching this to existing Rust programmers and new Rust programmers.
-- Discuss how this impacts the ability to read, understand, and maintain Rust code. Code is read and modified far more often than written; will the proposed feature make code easier to maintain?
-
-For implementation-oriented RFCs (e.g. for compiler internals), this section should focus on how compiler contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms.
+TODO
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This is the technical portion of the RFC. Explain the design in sufficient detail that:
-
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
-
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work.
+TODO
 
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
+TODO
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-- Why is this design the best in the space of possible designs?
-- What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this?
-- If this is a language proposal, could this be done in a library or macro instead? Does the proposed change make Rust code easier or harder to read, understand, and maintain?
+TODO
 
 ## Prior art
 [prior-art]: #prior-art
 
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
-Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406).
+Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406). This RFC introduces a new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax takes the forms:
+- `impl Trait for Type { use expression; }` - delegates all methods of the trait. <br>
+- `impl Trait for Type { use expression for name_1 (, name_i)*; }` - delegates a subset of the trait's methods (one or more, listed by name).
 
-#### Scope
-
-This RFC introduces a new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax takes the form `impl Trait for Type { use expression; }`, where `expression` resolves to a value implementing `Trait`.
+where `expression` resolves to a value implementing `Trait`.
 
 Prohibited patterns: delegation of associated constants ([?]()), delegation of associated types ([?]()).<br>
 Proposed extensions: renaming ([?]()), `Self` type mapping ([?]()), multiple traits ([?]()),  delegation of enums ([?]()), arbitrary parent context ([?]()).
 
 #### Reasons for proposal rejection
 
-_Unclear semantics._ The mechanism for callee resolution is not defined. It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+_Unclear semantics._ The mechanism for callee resolution is not defined (TODO: it doesn't matter in this context btw). It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
 
-_Forward compatibility._ Insufficient evidence that the proposed design could be cleanly extended to future delegation features without breaking semantics, requiring redesign or altering syntax.
+_Forward compatibility._ The RFC intentionally leaves many anticipated delegation features for future work, but there was insufficient evidence that the proposed design could be cleanly extended to those features without breaking semantics and requiring a redesign.
 
 You can also check Boat's [summary](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
 
 ### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
 
+Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). The design was stricter to address the semantic ambiguities of the earlier proposal: it restricted delegation to fields of `self` (e.g., `self.field`).
+
+TODO
+
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
+TODO
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
 
-Think about what the natural extension and evolution of your proposal would
-be and how it would affect the language and project as a whole in a holistic
-way. Try to use this section as a tool to more fully consider all possible
-interactions with the project and language in your proposal.
-Also consider how this all fits into the roadmap for the project
-and of the relevant sub-team.
-
-This is also a good place to "dump ideas", if they are out of scope for the
-RFC you are writing but otherwise related.
-
-If you have tried and cannot think of any future possibilities,
-you may simply state that you cannot think of anything.
-
-Note that having something written down in the future-possibilities section
-is not a reason to accept the current or a future RFC; such notes should be
-in the section on motivation or rationale in this or subsequent RFCs.
-The section merely provides additional information.
+TODO
