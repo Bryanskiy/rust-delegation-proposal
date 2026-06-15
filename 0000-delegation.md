@@ -39,6 +39,10 @@ TODO
 ## Prior art
 [prior-art]: #prior-art
 
+TODO: add macro based crates
+
+TODO: the whole point of previous RFCs analysis is to point out that there were issues with forward compatibility and in new proposal we solve this by better "design space exploration".
+
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
 Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406). This RFC introduces a new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax takes the forms:
@@ -64,16 +68,24 @@ TODO: we can add links to comments for each concern. Should we?
 
 Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). The design was stricter to address the semantics ambiguities of the earlier proposal. The syntax takes the forms:
 - `impl Trait for Type { delegate * to expression; }` - delegates all methods of the trait. <br>
-- `impl Trait for Type { delegate  fn name_1 (, fn name_i)* to expression; }` - delegates a subset of the trait's methods (one or more, listed by name).
+- `impl Trait for Type { delegate fn name_1 (, fn name_i)* to expression; }` - delegates a subset of the trait's methods (one or more, listed by name).
 
 where `expression` resolves to a field of `self` (e.g., `self.field`) and `typeof(expression)` implements `Trait`.
 
-Prohibited patterns: TODO. <br>
-Proposed extensions: TODO.
+Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Other cases are left for future extensions. Proposed desugaring scheme translates delegation item into method call([?](https://doc.rust-lang.org/reference/expressions/method-call-expr.html)) and therefore follows the corresponding method resolution scheme.
+
+Proposed extensions:
+- delegation of associated constants ([?]()), delegation of associated types ([?]()).
+    > [!NOTE]
+    > Types and functions/consts exist in separate namespaces. Therefore `fn`, `const` and `type` keywords were proposed to be used before callee names in order to disambiguate them.
+- TODO
+- misc (e.g. arbitrary expressions)
 
 #### Main reasons for proposal rejection
 
-TODO
+The second proposal was postponed due to the lang team bandwidth. ([?](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011)).
+
+TODO: Mention that forward compatibility concern wasn't addressed. Should we provide example or it's clear why?
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
