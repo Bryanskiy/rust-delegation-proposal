@@ -50,17 +50,28 @@ where `expression` resolves to a value implementing `Trait`.
 Prohibited patterns: delegation of associated constants ([?]()), delegation of associated types ([?]()).<br>
 Proposed extensions: renaming ([?]()), `Self` type mapping ([?]()), multiple traits ([?]()),  delegation of enums ([?]()), arbitrary parent context ([?]()).
 
-#### Reasons for proposal rejection
+#### Main reasons for proposal rejection
 
-_Unclear semantics._ The mechanism for callee resolution is not defined (TODO: it doesn't matter in this context btw). It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+_Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature. The mechanism for callee resolution is not defined.
 
-_Forward compatibility._ The RFC intentionally leaves many anticipated delegation features for future work, but there was insufficient evidence that the proposed design could be cleanly extended to those features without breaking semantics and requiring a redesign.
+_Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
 
 You can also check Boat's [summary](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
 
+TODO: we can add links to comments for each concern. Should we?
+
 ### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
 
-Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). The design was stricter to address the semantic ambiguities of the earlier proposal: it restricted delegation to fields of `self` (e.g., `self.field`).
+Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). The design was stricter to address the semantics ambiguities of the earlier proposal. The syntax takes the forms:
+- `impl Trait for Type { delegate * to expression; }` - delegates all methods of the trait. <br>
+- `impl Trait for Type { delegate  fn name_1 (, fn name_i)* to expression; }` - delegates a subset of the trait's methods (one or more, listed by name).
+
+where `expression` resolves to a field of `self` (e.g., `self.field`) and `typeof(expression)` implements `Trait`.
+
+Prohibited patterns: TODO. <br>
+Proposed extensions: TODO.
+
+#### Main reasons for proposal rejection
 
 TODO
 
