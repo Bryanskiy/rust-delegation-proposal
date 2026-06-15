@@ -76,8 +76,8 @@ Delegation is allowed only for methods that take a receiver by value, by referen
 
 Proposed extensions:
 - delegation of associated constants ([?]()), delegation of associated types ([?]()).
-    > [!NOTE]
-    > Types and functions/consts exist in separate namespaces. Therefore `fn`, `const` and `type` keywords were proposed to be used before callee names in order to disambiguate them.
+> [!NOTE]
+> Types and functions/consts exist in separate namespaces. Therefore `fn`, `const` and `type` keywords were proposed to be used before callee names in order to disambiguate them.
 - TODO
 - misc (e.g. arbitrary expressions)
 
