@@ -24,6 +24,23 @@ TODO
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
+This proposal introduces a new item kind ([?](https://doc.rust-lang.org/reference/items.html)), the _delegation item_:
+
+```diff
+Item →
+    OuterAttribute* ( VisItem | MacroItem )
+
+    VisItem →
+    Visibility
+    (
+        Module
+      | ExternCrate
+      ...
++     | Delegation
+```
+
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations.
+
 TODO
 
 ## Drawbacks
