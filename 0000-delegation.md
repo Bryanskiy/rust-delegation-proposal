@@ -48,10 +48,24 @@ TODO
 
 TODO
 
+### Alternatives to this RFC
+
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
 TODO
+
+### Alternatives to this RFC
+
+TODO
+
+#### Reflection
+
+An alternative approach to delegation in Rust would be some form of compile-time reflection. Given the ability to inspect type information such as function signatures during macro expansion, delegation can be implemented entirely as a third-party library, removing the need for dedicated language support.
+
+Work in this direction is already being explored. See [reflection project goal](https://github.com/rust-lang/rust-project-goals/issues/406).
+
+TODO: this is more general, but unclear whether can be implemented in Rust at all?
 
 ## Prior art
 [prior-art]: #prior-art
