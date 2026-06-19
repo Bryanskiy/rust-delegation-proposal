@@ -24,7 +24,7 @@ TODO
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This proposal introduces a new item kind ([?](https://doc.rust-lang.org/reference/items.html)), the _delegation item_:
+This proposal introduces a new [item kind](https://doc.rust-lang.org/reference/items.html), the _delegation item_:
 
 ```diff
 Item →
@@ -106,6 +106,10 @@ TODO: Mention that forward compatibility concern wasn't addressed. Should we pro
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
+
+TODO
+
+### What should the delegation keyword be named?
 
 TODO
 
