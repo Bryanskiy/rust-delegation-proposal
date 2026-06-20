@@ -63,7 +63,10 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 - Delegating from a free function to another free function.
 - etc.
 
-TODO
+TODO:
+- Option 1: in traits only - name is enough to resolve callee
+- Option 2: Fully qualified paths - all options are enabled but requires more syntax
+- Option 3: Like was suggested in RFC 2018 - use trait/impl as a disambiguator
 
 ### Alternatives to this RFC
 
