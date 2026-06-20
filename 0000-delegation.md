@@ -55,6 +55,14 @@ TODO
 
 ### Why can delegation items be declared in any position?
 
+Delegation is fundamentally the forwarding of function calls. A regular function in Rust may be a trait method, a method in a trait implementation, an inherent method, or a free function. We can form different combinations based on the position of a caller and a callee:
+
+- Delegating from a trait implementation to an implementation of the same trait.
+- Delegating from a trait implementation to an implementation of another trait.
+- Delegating from an inherent method to a trait implementation.
+- Delegating from a free function to another free function.
+- etc.
+
 TODO
 
 ### Alternatives to this RFC
