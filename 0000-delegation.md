@@ -39,7 +39,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations.
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations. ([?](#why-can-delegation-items-be-declared-in-any-position)).
 
 TODO
 
@@ -48,10 +48,12 @@ TODO
 
 TODO
 
-### Alternatives to this RFC
-
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
+
+TODO
+
+### Why can delegation items be declared in any position?
 
 TODO
 
