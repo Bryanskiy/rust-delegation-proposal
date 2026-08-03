@@ -53,7 +53,7 @@ TODO
 
 TODO
 
-### Why can delegation items be declared in any position?
+### Why can delegation items be declared in any position, and why are qualified paths used for call disambiguation?
 
 Delegation is fundamentally the forwarding of function calls. A regular function in Rust may be a trait method, a method in a trait implementation, an inherent method, or a free function. We can form different combinations based on the position of a caller and a callee:
 
@@ -63,10 +63,11 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 - Delegating from a free function to another free function.
 - etc.
 
-TODO:
-- Option 1: in traits only - name is enough to resolve callee
-- Option 2: Fully qualified paths - all options are enabled but requires more syntax
-- Option 3: Like was suggested in RFC 2018 - use trait/impl as a disambiguator
+It therefore needs to be decided whether delegation should be limited to a subset of these combinations or whether a uniform mechanism should be provided for all of them. The choice is closely tied to the function call resolution algorithm and the available syntax budget.
+
+1. The feature can be constrained to a narrow but common scenario: delegating the implementation of a trait to an implementation of the same trait, as was proposed in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Under this approach, the callee can be resolved simply by its method name. However, this syntax does not generalize naturally to other caller/callee combinations as it can lead to [ambiguities](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar.limits).
+2. TODO: Another approach, explored by [RFC 2018], is to use contextual keywords such as `trait`, `impl`, or `fn` as disambiguators.
+3. TODO: We can leverage Rust's existing Fully Qualified Path (`<Type as Trait>::method`) syntax to refer to the callee. This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax.
 
 ### Alternatives to this RFC
 
@@ -101,6 +102,8 @@ Proposed extensions: renaming ([?]()), `Self` type mapping ([?]()), multiple tra
 #### Main reasons for proposal rejection
 
 _Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature. The mechanism for callee resolution is not defined.
+
+TODO: mechanism for desugaring is not defined
 
 _Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
 
@@ -139,6 +142,24 @@ TODO
 ### What should the delegation keyword be named?
 
 TODO
+
+### How should the visibility of the generated function be determined?
+
+ The proposed syntax allows the visibility of a reused function to be specified independently from the visibility of the original definition. While this flexibility is desirable, it introduces a potential _semver hazard_:
+
+```rust
+fn foo<T: Copy>(x: T) { /* impl */ }
+pub reuse foo as bar;
+```
+
+If the signature of `foo` changes, the generated function `bar` changes accordingly. In regular Rust code, such a signature change would cause a type error at every call site, forcing the author to update callers. With `reuse`, however, the change propagates silently. As a result, modifications intended to be internal may accidentally become breaking changes for downstream crates.
+
+Taking this into consideration, several design choices are possible:
+
+1. The visibility of the generated function is taken solely from the `reuse` declaration.
+
+2.  The visibility of the generated function cannot exceed the visibility of the reused function. In other words, delegation may only preserve or reduce visibility, never increase it. This can be implemented as a lint or a hard error.
+3. Explicit visibility control by the user.
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
