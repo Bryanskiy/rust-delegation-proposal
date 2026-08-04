@@ -41,6 +41,16 @@ Item →
 
 Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Like other items, delegation items may be annotated with a visibility modifier ([?](#how-should-the-visibility-of-the-generated-function-be-determined)) and may have attributes applied to them.
 
+The delegation item consists of a [fully qualified path](https://doc.rust-lang.org/reference/paths.html#qualified-paths) followed by a [block expression](https://doc.rust-lang.org/reference/expressions/block-expr.html):
+```diff
++ Delegation →
++     QualifiedPathInExpression BlockExpression
+```
+
+Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions.
+
+TODO: why {}; `self` inside expression; generics; implementation notes about inherent methods; "refined"
+
 TODO
 
 ## Drawbacks
