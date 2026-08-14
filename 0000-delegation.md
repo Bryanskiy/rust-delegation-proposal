@@ -73,11 +73,18 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 - Delegating from a free function to another free function.
 - etc.
 
-It therefore needs to be decided whether delegation should be limited to a subset of these combinations or whether a uniform mechanism should be provided for all of them. The choice is closely tied to the function call resolution algorithm and the available syntax budget.
+All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case, and the extensibility to other cases.
 
-1. The feature can be constrained to a narrow but common scenario: delegating the implementation of a trait to an implementation of the same trait, as was proposed in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Under this approach, the callee can be resolved simply by its method name. However, this syntax does not generalize naturally to other caller/callee combinations as it can lead to [ambiguities](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar.limits). TODO: other alternatives based on the way these ambiguities are handled
+Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which resolves to associated methods that take a receiver argument. If more than one method is applicable the compiler emits an error. Se second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve the ambiguity.
+
+From the delegation perspective we have a quite similar situation. [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities as already mentioned above.
+
+Based on the provided information we can categorize the alternatives as follows:
+
+1. TODO: The same as in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). But we would not propose the same thing twice and want to explore another rout.
 2. TODO: Another approach, explored by [RFC 2018], is to use contextual keywords such as `trait`, `impl`, or `fn` as disambiguators.
 3. TODO: We can leverage Rust's existing Fully Qualified Path (`<Type as Trait>::method`) syntax to refer to the callee. This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax.
+4. TODO: We can use `target_expression` for resolution, i.e. typeof(`target_expression`) + name, but too complex from the implementation perspective. Add Note.
 
 ### How should the visibility of the generated function be determined?
 
@@ -160,7 +167,7 @@ Proposed extensions:
 
 #### Main reasons for proposal rejection
 
-The second proposal was postponed due to the lang team bandwidth. ([?](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011)).
+The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011) due to the lang team bandwidth.
 
 TODO: Mention that forward compatibility concern wasn't addressed. Should we provide example or it's clear why?
 
