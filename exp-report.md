@@ -632,6 +632,7 @@ reuse impl MyAdd for W { self.0 }
 ```
 
 The code above will compile as we will apply adjustments for all arguments of `add` function (as if all arguments were at receiver position and we were processing method call).
+Note that as we apply target expression to more than one argument, we need to lower it several times which causes errors when a single `LocalDefId` is lowered more than once. We can re-lower rust code that does not contain definitions, but re-lowering target expressions with definitions is prohibited for now.
 
 ## One-line trait reuse
 
@@ -719,6 +720,31 @@ fn fourth<Self>() -> _ { <Self as Trait>::third() }
 
 # Diagnostics
 
+The following errors are reported:
+
+- `failed to resolve delegation callee` - when we failed to resolve delegation,
+- `encountered a cycle during delegation signature resolution` - when there is a cycle in the recursive delegations chain,
+- `delegation's target expression is specified for function with no params` - when target expression is specified for delegation whose signature function has no params (does not reported in case of list or glob delegations),
+- `wrong infer used: expected {$expected}, found: {$actual}` - when `'_` is used instead of `_` and vice versa in user specified generics arguments,
+- `attempted to lower target expression with definitions more than once while mapping argument` - when user declared definition in the target expression which is lowered more than once during `Self` type mapping,
+- `ambiguous delegation to inherent impl function` - when there are several candidates for delegation to inherent impl,
+- `delegation to inherent impl must contain parent generics` - when delegating to inherent impl parent segment of the call path must contain user-specified generic arguments,
+- `parent segment of delegation to inherent impl can not contain infers` - infers are prohibited in delegation to inherent impls,
+- `UnsupportedDelegation` - when delegation to this entity is not supported,
+- `inferred lifetimes are not allowed in delegations as we need to inherit signature` - when we encountered infer regions during delegation signature inheritance,
+
+This was the list of named diagnostics that are reported, if we encounter any other error, we would generate an "error" delegation - a function with no parameters that just calls the call path with lowered target expression, then other parts of the compiler will report real errors which caused errors in delegation generation.
+
 # Unresolved questions
 
 ## Resolution of type-relative path during AST -> HIR lowering
+
+As we support (partially for now) delegations to inherent impls, we need to use `ProbeContext` routine to fairly resolve them during AST -> HIR lowering of the delegation (or before AST -> HIR lowering at all). The research of how to solve it was done in this [pull request](https://github.com/rust-lang/rust/pull/155337). TLDR the idea is to execute resolution of delegations in a sandbox: a special mode of the compiler that allows us to forget that delegations exist in the code base and execute resolution through `ProbeContext` without query cycles. That is a large infrastructural work with many questions, like how to prevent leak of already allocated definitions into the sandbox, how to make it performant friendly, how to invalidate query caches after sandbox, should sandbox be executed inplace in the current query system or maybe we should clone it and execute there, etc.
+
+## Removing already allocated `LocalDefId`
+
+When an id for definition is allocated it is hard to remove it with zero perf cost, as data structure in structs like `Definitions` are highly optimized for storage of continuous range of numbers (`IndexVec`) and when it comes to removal it is hard (well at least for me) to (1) implement it in a performant friendly way and (2) prevent leak of definitions id from other sources, for example we have `resolutions(())` query which is in fact a global state we have after resolution, and any developer may put a new map there, fill it with definitions ids that will be deleted during AST -> HIR lowering and then it will be accessed in some other stage of the compiler, which will think that it is not deleted, while other parts of the compiler will think that this definition is deleted.
+
+## Lower single target expression with definitions inside twice during AST -> HIR lowering
+
+Glob and list delegations are expanded during macro expansion, meaning we do not have full resolution information, in particular we do not know which arguments need to be mapped (recall the `Self` type mapping section). If we had this information we could generate several target expressions and thus we would not try to lower single target expression more than once. As another way we could clone this target expression and all resolution results that are connected to it and lower a deep copy of it. However, it may require altering outputs of resolution-level queries (as we deep cloned target expression we allocated new node ids and definitions ids, so for all other code to work we need to put this information alongside all other information from the resolve stage), such as `resolutions(())`, which is impossible right now.
