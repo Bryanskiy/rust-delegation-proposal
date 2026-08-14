@@ -56,8 +56,6 @@ The first thing to do is given delegation path `Trait::foo` find its signature f
 - All other cases
   The resolution of the signature function in all other cases matches the resolution of delegation path segment.
 
-## How target expression is generated
-
 ## Signature and clauses inheritance, generics
 
 When generating delegation we need to generate generics, inherit clauses and signature. Generics are inherited during AST -> HIR lowering, while clauses and signature are created during HIR analysis.
@@ -136,7 +134,7 @@ The pattern of generated generic params is as follows: for `reuse Trait::foo` we
 
 ### Free-to-impl
 
-
+TODO
 
 ### Trait-to-free
 
@@ -215,6 +213,8 @@ trait Trait2 {
 We do not generate explicit `Self` generic parameter as in free to trait delegation. Note that `Self` implicit generic parameter corresponds to `Trait2`.
 
 ### Trait-to-impl
+
+TODO
 
 ### TraitImpl-to-free
 
@@ -296,6 +296,8 @@ We do not generate explicit `Self` param, as the situation with signature functi
 
 ### TraitImpl-to-impl
 
+TODO
+
 ### Impl-to-free
 
 The same rules as in trait to free delegation are applied here:
@@ -362,7 +364,118 @@ We also do not generate explicit `Self` generic param as in free to trait delega
 
 ### Impl-to-impl
 
+TODO
+
+### Inheriting clauses and signature
+
+We construct delegation signature and clauses after AST -> HIR lowering, during analysis. For this purpose we copy clauses from signature function and its parent if present. Next, user can specify generic arguments in the delegation call path, so we need to consider them while building delegation's signature:
+
+```rust
+fn foo<T>(t: T) {}
+
+reuse foo::<usize> as bar;
+
+// Desired desugaring:
+fn bar(t: usize) { foo::<usize>(t) }
+```
+
+In the example above we want generated delegation to have argument of type `usize` and we do not want to generate generic param `T`. Moreover, if the signature function contains clauses we want map them onto user-specified generic arguments if they are present:
+
+```rust
+trait Marker<T> {}
+trait Trait<T, U: Marker<T>> {
+    fn foo<V>(self, v: V, u: U);
+}
+
+reuse Trait::<usize, _>::foo;
+
+// Desugaring:
+#[attr = Inline(Hint)]
+fn foo<Self, U, V>(self: _, arg1: _, arg2: _)
+    -> _ { <Self as Trait::<usize, U>>::foo::<V>(self, arg1, arg2) }
+```
+
+In the example above we want `Self: Trait<usize, U>`, `U: Marker<usize>` clauses to be present.
+
+Delegation's parent generic arguments can also be used by delegation:
+
+```rust
+trait Marker<T> {}
+trait Trait<T, U: Marker<T>> {
+    fn foo<V>(self, v: V, u: U);
+}
+
+trait Trait2<A, B> {
+    reuse Trait::<usize, A>::foo;
+}
+```
+
+So when mapping clauses and signature we also need to consider delegation's parent generics. Given all that and the possibility of different `Self` positions we construct the following generic arguments and remap table for generics:
+
+```rust
+/// [SELF | maybe self in the beginning]
+/// [PARENT | args of delegation parent]
+/// [SIG PARENT LIFETIMES]
+/// [SIG LIFETIMES]
+/// [SELF | maybe self after lifetimes, when we reuse trait fn in free context]
+/// [SIG PARENT TYPES/CONSTS]
+/// [SIG TYPES/CONSTS]
+```
+
+Next we iterate over delegation parent, signature parent and child mapping indices of signature parent and child into new generic arguments. Note that we do not have to map delegation's parent indices as they corresponds to indices of generic arguments in new array. For the example above the mapping and new generic args will be:
+```rust
+[Self/#0, A/#1, B/#2, usize, A/#1, V/#3], {0: 0, 3: 5, 1: 3, 2: 4}
+```
+
+So `Self` generic param is mapped into itself, first generic param of trait is mapped into `usize` (index `3` in the new args), `U` is mapped into fourth arg (`A`, from delegation parent) and `V` is mapped into the last argument. Note that delegation's parent `A` and `B` are present in the beginning of new args straight after `Self` arg.
+
 ## Recursive delegations
+
+Delegations can be recursive, the recursion chain is defined by the signature function ID.
+
+```rust
+trait Trait1 {
+    fn foo(&self) {}
+}
+
+impl Trait1 for () {}
+
+struct S1<T>(T);
+impl<T: Trait1> S1<T> {
+    reuse Trait1::foo { self.0 }
+}
+
+struct S2(S1<()>);
+impl S2 {
+    reuse S1::<()>::foo { self.0 }
+}
+
+reuse S2::foo;
+
+struct S3;
+impl S3 {
+    reuse foo;
+}
+
+impl Trait1 for S3 {
+    reuse S2::foo { &S2(S1(())) }
+}
+
+trait Trait2 {
+    reuse <S3 as Trait1>::foo { S3 }
+}
+
+reuse Trait2::foo as trait_foo;
+
+struct S4;
+impl S4 {
+    reuse trait_foo;
+}
+
+reuse S4::trait_foo as trait_foo_reused;
+```
+
+If we encounter cycle in recursive delegations chain then we report an error.
 
 ## Glob and list delegations, deletion of the target expression
 
@@ -460,6 +573,66 @@ We require that target expression has it final-return expression and all stateme
 
 ## `Self`-type mapping
 
+One of common case for delegation is to delegate from a newtype that wraps some other type to a trait. In this case we know that `Self` in trait declaration and `Self` in the trait impl would have different types, so we need to perform additional actions to make it compile:
+
+```rust
+trait Trait {
+    fn method(&self) -> Self;
+}
+
+struct S;
+impl Trait for S {
+    fn method(&self) -> S { S }
+}
+
+struct W(S);
+impl Trait for W {
+    reuse Trait::method { self.0 }
+
+    // Desugaring:
+    #[attr = Inline(Hint)]
+    fn method(self: _) -> _ { from(Self { 0: Trait::method(self.0) }) }
+}
+```
+
+In the example above when desugaring `method` in `W` trait impl by default it will return `S` as its signature in trait has `Self` in the return type. However, we implementing this trait for a newtype, so we would like to wrap the return value into `W { 0: /* delegation */ }`, otherwise the code will not work. That is basically what we do when we see that the delegation is in trait impl and the return type of the signature function is something that contains `Self` in generic arguments of the ADT or is inside a reference. The condition is so relaxed, because we can encounter return types such as `Box<Self>` or `Rc<Self>` which require additional processing to work: we wrap the return value of the generated delegation with a single `From::from` call. This solution will not support complex return types such as `Rc<Box<Self>>`, where theoretically we could have generated two `From::from` calls and this will work, however this approach is limited only to pointer types where we know their structure ahead of time, with complex custom type trees it is not obvious what to generate: `Struct<Arc<Rc<Self>>, Self, Self>`, that is why we decided to generate a single `From::from` call. Supporting more complex return value conversions could have involved explicitly specifying them, however that will indirectly (or directly) grow delegation's syntax budget, which we try to avoid.
+
+Next come arguments which also can be mapped. The selector for such arguments is the same as selector for mapping the return value: it contains `Self` generic param and the delegation is in trait impl.
+
+```rust
+trait MyAdd {
+    fn add(self, other: Self) -> Self;
+}
+
+impl MyAdd for usize {
+    fn add(self, other: usize) -> usize { self + other }
+}
+
+struct W(usize);
+reuse impl MyAdd for W { self.0 }
+
+// Desugaring:
+#[attr = Inline(Hint)]
+fn add(self: _, arg1: _)
+    -> _ { from(Self { 0: MyAdd::add(self.0, self.0) }) }
+```
+
+In the example above the `other` argument need to be mapped, as if we don't do it then we get code that does not compile. The intuition here is to apply target expression and adjustments not only to the first argument but for all arguments that need to be mapped. Note that we apply adjustments too:
+```rust
+trait MyAdd {
+    fn add(self: &Self, other: &mut Self, another_other: Self);
+}
+
+impl MyAdd for usize {
+    fn add(self: &Self, other: &mut Self, another_other: Self) {}
+}
+
+struct W(Box<Box<Box<usize>>>);
+reuse impl MyAdd for W { self.0 }
+```
+
+The code above will compile as we will apply adjustments for all arguments of `add` function (as if all arguments were at receiver position and we were processing method call).
+
 ## One-line trait reuse
 
 ```rust
@@ -543,6 +716,8 @@ trait Trait {
 #[attr = Inline(Hint)]
 fn fourth<Self>() -> _ { <Self as Trait>::third() }
 ```
+
+# Diagnostics
 
 # Unresolved questions
 
