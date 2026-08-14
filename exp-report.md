@@ -1,3 +1,34 @@
+[Current implementation details](#current-implementation-details)
+- [Current implementation details](#current-implementation-details)
+  - [Finding signature function](#finding-signature-function)
+  - [Signature and clauses inheritance, generics](#signature-and-clauses-inheritance-generics)
+    - [Free-to-free](#free-to-free)
+    - [Free-to-trait](#free-to-trait)
+    - [Trait-to-free](#trait-to-free)
+    - [Trait-to-trait](#trait-to-trait)
+    - [TraitImpl-to-free](#traitimpl-to-free)
+    - [TraitImpl-to-trait](#traitimpl-to-trait)
+    - [Impl-to-free](#impl-to-free)
+    - [Impl-to-trait](#impl-to-trait)
+  - [Free-to-impl](#free-to-impl)
+  - [Trait-to-impl](#trait-to-impl)
+  - [TraitImpl-to-impl](#traitimpl-to-impl)
+  - [Impl-to-impl](#impl-to-impl)
+    - [Inheriting clauses and signature](#inheriting-clauses-and-signature)
+    - [Alternative design](#alternative-design)
+  - [Recursive delegations](#recursive-delegations)
+  - [Glob and list delegations, deletion of the target expression](#glob-and-list-delegations-deletion-of-the-target-expression)
+  - [Adjustments for the "receiver" argument](#adjustments-for-the-receiver-argument)
+  - [`Self`-type mapping](#self-type-mapping)
+  - [One-line trait reuse](#one-line-trait-reuse)
+  - [Inherited and generated attributes](#inherited-and-generated-attributes)
+- [Diagnostics](#diagnostics)
+- [Unresolved questions](#unresolved-questions)
+  - [Resolution of type-relative path during AST -\> HIR lowering](#resolution-of-type-relative-path-during-ast---hir-lowering)
+  - [Removing already allocated `LocalDefId`](#removing-already-allocated-localdefid)
+  - [Lower single target expression with definitions inside twice during AST -\> HIR lowering](#lower-single-target-expression-with-definitions-inside-twice-during-ast---hir-lowering)
+
+
 # Current implementation details
 
 ## Finding signature function
@@ -61,7 +92,7 @@ The first thing to do is given delegation path `Trait::foo` find its signature f
 
 When generating delegation we need to generate generics, inherit clauses and signature. Generics are inherited during AST -> HIR lowering, while clauses and signature are created during HIR analysis.
 
-User can either specify generic arguments in delegation or use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that this generic param should be generated.
+User can either specify generic arguments in delegation or use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that this generic param should be generated. Nested infers are not allowed: `reuse Trait::<Vec<_>, Box<_>>::foo`.
 
 ### Free-to-free
 
@@ -395,23 +426,6 @@ trait Trait {
 }
 ```
 
-Note that we didn't specified target expression, so we would get errors like:
-```rust
-error[E0308]: mismatched types
-  --> $DIR/xd.rs:10:14
-   |
-LL | trait Trait {
-   | ----------- found this type parameter
-LL |     reuse X::foo;
-   |              ^^^
-   |              |
-   |              expected `&X<'_, T, B>`, found `&Self`
-   |              arguments to this function are incorrect
-   |
-   = note: expected reference `&X<'_, T, B>`
-              found reference `&Self`
-```
-
 ## TraitImpl-to-impl
 
 Here the resolution should look signature in trait as in other cases where we delegate from trait impl. We generate function whose signature matches the resolved function in trait. We propagate only child generics if they are not specified.
@@ -533,6 +547,32 @@ Next we iterate over delegation parent, signature parent and child mapping indic
 
 So `Self` generic param is mapped into itself, first generic param of trait is mapped into `usize` (index `3` in the new args), `U` is mapped into fourth arg (`A`, from delegation parent) and `V` is mapped into the last argument. Note that delegation's parent `A` and `B` are present in the beginning of new args straight after `Self` arg.
 
+### Alternative design
+
+As an alternative option we may have allowed to explicitly declare generic params in delegation:
+
+```rust
+reuse<T, U> Trait::<Vec<T>>::foo::<Box<Box<U>>>;
+
+// Desugaring:
+fn foo<Self, T, U>() {
+    <Self as Trait::<Vec<T>>>::foo::<Box<Box<U>>>
+}
+```
+
+Generation of `Self` can also be delegated to user, so he writes:
+
+```rust
+reuse<S, T, U> <S as Trait::<Vec<T>>>::foo::<Box<Box<U>>>;
+
+// Desugaring:
+fn foo<S, T, U>() {
+    <S as Trait::<Vec<T>>>::foo::<Box<Box<U>>>
+}
+```
+
+In this case user controls how much generic params is generated in delegation and can specify arbitrary types with deep nesting.
+
 ## Recursive delegations
 
 Delegations can be recursive, the recursion chain is defined by the signature function ID.
@@ -609,7 +649,6 @@ List delegation can be used when delegating to traits or inherent impls, glob de
 
 Note that one of reused functions has no receiver, thus it would be incorrect to apply target expression in such delegation, that is why we need to remove it. Glob and list delegations are expanded before AST -> HIR lowering, meaning we have standalone delegations for each list or glob delegation. That in turn means that we already allocated `LocalDefId`s for contents of target
 expression that was duplicated for each standalone delegation. If we want to remove it for some delegations we need to delete arbitrary user code that is inside delegation's target expression, meaning potential deletion of already allocated inner `LocalDefId`s. Unfortunately, now it is hard to remove already allocated `LocalDefId` with zero performance cost as a lot of data structures that are used inside compiler are optimized for continuous ranges of number-like structs. Moreover, even if we alter existing data structures so they support deletion (or marking ids that should be considered deleted) next we have to think how to prevent leak of deleted ids, as in other features of rust compiler someone may store deleted id somewhere, bypassing our checks, and then access it when it is considered deleted by altered data structures. This require complex analysis of all data structures that are used in the compiler, when they are accessed and how to modify them in performance-friendly manner with an expressive infrastructure that will prevent leak of deleted ids.
-
 
 ## Adjustments for the "receiver" argument
 
