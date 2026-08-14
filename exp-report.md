@@ -18,7 +18,8 @@ trait Trait<'a, T> {
 struct X;
 // Delegation parent.
 impl X {
-    // Delegation.
+    // Delegation, `Trait::foo` is a call path, who also has a resolution,
+    // in most cases signature function resolution and call path resolution are the same.
     reuse Trait::foo;
 }
 ```
@@ -132,10 +133,6 @@ User can specify generic arguments either in parent, child or parent and child s
 
 The pattern of generated generic params is as follows: for `reuse Trait::foo` we have `[parent lifetimes], [child lifetime], Self, [parent types can consts], [child types and consts]`.
 
-### Free-to-impl
-
-TODO
-
 ### Trait-to-free
 
 In trait to free delegation everything is relatively simple:
@@ -211,10 +208,6 @@ trait Trait2 {
 ```
 
 We do not generate explicit `Self` generic parameter as in free to trait delegation. Note that `Self` implicit generic parameter corresponds to `Trait2`.
-
-### Trait-to-impl
-
-TODO
 
 ### TraitImpl-to-free
 
@@ -294,10 +287,6 @@ impl Trait for X {
 
 We do not generate explicit `Self` param, as the situation with signature function resolution is the same as in trait impl to free delegation, moreover we ignore parent generics, if they are not specified then we would get an error, so the user should specify them explicitly: `reuse FromTrait::<'static, (), ()>::...`, infers both in child and parent segments are also ignored.
 
-### TraitImpl-to-impl
-
-TODO
-
 ### Impl-to-free
 
 The same rules as in trait to free delegation are applied here:
@@ -362,9 +351,145 @@ impl X {
 
 We also do not generate explicit `Self` generic param as in free to trait delegation. Infers are supported both in parent and child segment of the call path.
 
+### Free-to-impl
+
+Unlike free to trait delegation where we generated explicit `Self` param, here we just use default parameter.
+
+```rust
+struct X<'a, T, const B: bool>(...);
+impl<'a, T, const B: bool> X<'a, T, B> {
+  fn foo<'b, U, const X: usize>(&self) { ... }
+}
+
+reuse X::foo;
+reuse X::<'static, (), false>::foo as foo1;
+reuse X::foo::<'static, (), 123> as foo2;
+reuse X::foo::<'static, (), false,>::foo::<'static, (), 123> as foo3;
+
+//Desugaring:
+#[attr = Inline(Hint)]
+fn foo<'a, 'b, T, const B: _, U, const X: _>(self: _) -> _ where 'a:'a,
+    'b:'b { X<'a, T, B>::foo::<'b, U, X>(self) }
+
+#[attr = Inline(Hint)]
+fn foo1<'b, U, const X: _>(self: _) -> _ where
+    'b:'b { X<'static, (), false>::foo::<'b, U, X>(self) }
+
+#[attr = Inline(Hint)]
+fn foo2<'a, T, const B: _>(self: _) -> _ where
+    'a:'a { X<'a, T, B>::foo::<'static, (), 123>(self) }
+
+#[attr = Inline(Hint)]
+fn foo3(self: _) -> _ { X<'static, (), false>::foo::<'static, (), 123>(self) }
+```
+
 ### Impl-to-impl
 
-TODO
+In inherent impl to inherent impl delegation we replace signature self type with delegation parent self type in case of methods.
+```rust
+trait Trait {
+    fn foo<A, B, C>(&self) { }
+    fn foo1<T, U, V>(&self) { }
+    fn foo2<'a, T, U, V>(&self) where 'a:'a { }
+    fn foo3(&self) { }
+}
+
+struct Y;
+
+impl Trait for Y {
+    reuse X::foo;
+    reuse X::<'static, (), false>::foo as foo1;
+    reuse X::foo::<'static, (), 123> as foo2;
+    reuse X::<'static, (), false,>::foo::<'static, (), 123> as foo3;
+}
+
+impl Trait for Y {
+    #[attr = Inline(Hint)]
+    fn foo<A, B, C>(self: _) -> _ { X::foo::<A, B, C>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo1<T, U, V>(self: _)
+        -> _ { X<'static, (), false>::foo::<T, U, V>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo2<'a, T, U, V>(self: _) -> _ where
+        'a:'a { X::foo::<'static, (), 123>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo3(self: _)
+        -> _ { X<'static, (), false>::foo::<'static, (), 123>(self) }
+}
+```
+
+### Trait-to-impl
+
+In trait to inherent impl delegation we replace the type of self parameter from impl's type to `Self` generic param (if the signature function is a method).
+
+```rust
+trait Trait {
+    reuse X::foo;
+    reuse X::<'static, (), false>::foo as foo1;
+    reuse X::foo::<'static, (), true> as foo2;
+    reuse X::<'static, (), false,>::foo::<'static, (), true> as foo3;
+}
+
+// Desugaring:
+trait Trait {
+    #[attr = Inline(Hint)]
+    fn foo<'a, 'b, T, const B: _, U, const X: _>(self: _) -> _ where 'a:'a,
+        'b:'b { X<'a, T, B>::foo::<'b, U, X>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo1<'b, U, const X: _>(self: _) -> _ where
+        'b:'b { X<'static, (), false>::foo::<'b, U, X>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo2<'a, T, const B: _>(self: _) -> _ where
+        'a:'a { X<'a, T, B>::foo::<'static, (), 123>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo3(self: _)
+        -> _ { X<'static, (), false>::foo::<'static, (), 123>(self) }
+}
+```
+
+### TraitImpl-to-impl
+
+Here the resolution should look signature in trait as in other cases where we delegate from trait impl. We generate function whose signature matches the resolved function in trait. We propagate only child generics if they are not specified.
+
+```rust
+trait Trait {
+    fn foo<A, B, C>(&self) { }
+    fn foo1<T, U, V>(&self) { }
+    fn foo2<'a, T, U, V>(&self) where 'a:'a { }
+    fn foo3(&self) { }
+}
+
+impl Trait for X {
+    reuse X::foo;
+    reuse X::<'static, (), false>::foo as foo1;
+    reuse X::foo::<'static, (), 123> as foo2;
+    reuse X::<'static, (), false,>::foo::<'static, (), 123> as foo3;
+}
+
+// Desugaring:
+impl Trait for X<'_> {
+    #[attr = Inline(Hint)]
+    fn foo<A, B, C>(self: _) -> _ { X::foo::<A, B, C>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo1<T, U, V>(self: _)
+        -> _ { X<'static, (), false>::foo::<T, U, V>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo2<'a, T, U, V>(self: _) -> _ where
+        'a:'a { X::foo::<'static, (), 123>(self) }
+
+    #[attr = Inline(Hint)]
+    fn foo3(self: _)
+        -> _ { X<'static, (), false>::foo::<'static, (), 123>(self) }
+}
+```
 
 ### Inheriting clauses and signature
 
