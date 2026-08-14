@@ -1,4 +1,3 @@
-[Current implementation details](#current-implementation-details)
 - [Current implementation details](#current-implementation-details)
   - [Finding signature function](#finding-signature-function)
   - [Signature and clauses inheritance, generics](#signature-and-clauses-inheritance-generics)
