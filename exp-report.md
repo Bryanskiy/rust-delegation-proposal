@@ -9,10 +9,10 @@
     - [TraitImpl-to-trait](#traitimpl-to-trait)
     - [Impl-to-free](#impl-to-free)
     - [Impl-to-trait](#impl-to-trait)
-  - [Free-to-impl](#free-to-impl)
-  - [Trait-to-impl](#trait-to-impl)
-  - [TraitImpl-to-impl](#traitimpl-to-impl)
-  - [Impl-to-impl](#impl-to-impl)
+    - [Free-to-impl](#free-to-impl)
+    - [Trait-to-impl](#trait-to-impl)
+    - [TraitImpl-to-impl](#traitimpl-to-impl)
+    - [Impl-to-impl](#impl-to-impl)
     - [Inheriting clauses and signature](#inheriting-clauses-and-signature)
     - [Alternative design](#alternative-design)
   - [Recursive delegations](#recursive-delegations)
@@ -381,7 +381,7 @@ impl X {
 
 We also do not generate explicit `Self` generic param as in free to trait delegation. Infers are supported both in parent and child segment of the call path.
 
-## Free-to-impl
+### Free-to-impl
 
 Unlike free to trait delegation where we generated explicit `Self` param, here we just use default parameter.
 
@@ -403,7 +403,7 @@ fn foo1<'b, U, const X: _>(self: _) -> _ where
 fn foo3(self: _) -> _ { X<'static, (), false>::foo::<'static, (), 123>(self) }
 ```
 
-## Trait-to-impl
+### Trait-to-impl
 
 In trait to inherent impl delegation we replace the type of self parameter from impl's type to `Self` generic param (if the signature function is a method).
 
@@ -425,7 +425,7 @@ trait Trait {
 }
 ```
 
-## TraitImpl-to-impl
+### TraitImpl-to-impl
 
 Here the resolution should look signature in trait as in other cases where we delegate from trait impl. We generate function whose signature matches the resolved function in trait. We propagate only child generics if they are not specified.
 
@@ -454,7 +454,7 @@ impl Trait for X<'_> {
 }
 ```
 
-## Impl-to-impl
+### Impl-to-impl
 
 In inherent impl to inherent impl delegation we replace signature self type with delegation parent self type in case of methods.
 ```rust
