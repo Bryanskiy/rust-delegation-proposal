@@ -9,8 +9,6 @@
 
 Provide a syntactic sugar to automatically forward function calls.
 
-TODO: maybe something else? Should be filled last anyway.
-
 ## Motivation
 [motivation]: #motivation
 
@@ -47,7 +45,7 @@ The delegation item consists of a [fully qualified path](https://doc.rust-lang.o
 +     QualifiedPathInExpression BlockExpression
 ```
 
-Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions.
+Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)).
 
 TODO: why {}; `self` inside expression; generics; implementation notes about inherent methods; "refined"
 
@@ -73,18 +71,17 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 - Delegating from a free function to another free function.
 - etc.
 
-All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case, and the extensibility to other cases.
+All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
-Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which resolves to associated methods that take a receiver argument. If more than one method is applicable the compiler emits an error. Se second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve the ambiguity.
+Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which resolves to associated methods that take a receiver argument. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
-From the delegation perspective we have a quite similar situation. [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities as already mentioned above.
+From the delegation's perspective the alternatives can be categorized as follows:
 
-Based on the provided information we can categorize the alternatives as follows:
-
-1. TODO: The same as in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). But we would not propose the same thing twice and want to explore another rout.
-2. TODO: Another approach, explored by [RFC 2018], is to use contextual keywords such as `trait`, `impl`, or `fn` as disambiguators.
-3. TODO: We can leverage Rust's existing Fully Qualified Path (`<Type as Trait>::method`) syntax to refer to the callee. This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax.
-4. TODO: We can use `target_expression` for resolution, i.e. typeof(`target_expression`) + name, but too complex from the implementation perspective. Add Note.
+1. __Resolve the callee from the method name alone.__
+[rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities as noted above.
+2. __Resolve the callee from the fully qualified path.__ This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax. In this proposal we chose this option. It also can be forward compatibly extended to the first option.
+3. __Keywords as disambiguators.__ One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. This proposal does not follow this path. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
+4. __Typeck.__ Another possibility is to use a target expression to infer the callee, i.e. the compiler would take the type of the expression and then resolve the method by name. This path is left for an alternative reflection-based language feature [(?)](#reflection).
 
 ### How should the visibility of the generated function be determined?
 
@@ -100,11 +97,10 @@ If the signature of `foo` changes, the generated function `bar` changes accordin
 Taking this into consideration, several design choices are possible:
 
 1. The visibility of the generated function is taken solely from the callee.
-
-2.  The visibility of the generated function cannot exceed the visibility of the reused function. In other words, delegation may only preserve or reduce visibility, never increase it. This can be implemented as a lint or a hard error.
+2.  The visibility of the generated function cannot exceed the visibility of the reused function. In other words, delegation may only preserve or reduce visibility, never increase it.
 3. Explicit visibility control by the user.
 
-TODO: the choice
+We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee. The visibility handling can be refined prior to stabilization based on experience and feedback and does not block this proposal.
 
 ### Alternatives to this RFC
 
@@ -116,14 +112,14 @@ An alternative approach to delegation in Rust would be some form of compile-time
 
 Work in this direction is already being explored. See [reflection project goal](https://github.com/rust-lang/rust-project-goals/issues/406).
 
-TODO: this is more general, but unclear whether can be implemented in Rust at all?
-
 ## Prior art
 [prior-art]: #prior-art
 
 TODO: add macro based crates
 
-TODO: the whole point of previous RFCs analysis is to point out that there were issues with forward compatibility and in new proposal we solve this by better "design space exploration".
+TODO: the whole point of previous RFCs analysis is to point out that there were issues with forward compatibility and unclear semantics. In new proposal we solve this by better "design space exploration".
+
+TODO: maybe remove extensions/prohibited features?
 
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
@@ -146,8 +142,6 @@ _Forward compatibility._ The RFC intentionally leaves many features for future w
 
 You can also check Boat's [summary](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
 
-TODO: we can add links to comments for each concern. Should we?
-
 ### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
 
 Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). The design was stricter to address the semantics ambiguities of the earlier proposal. The syntax takes the forms:
@@ -167,9 +161,7 @@ Proposed extensions:
 
 #### Main reasons for proposal rejection
 
-The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011) due to the lang team bandwidth.
-
-TODO: Mention that forward compatibility concern wasn't addressed. Should we provide example or it's clear why?
+The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011) due to the lang team bandwidth. Additionally, forward compatibility concerns were never fully addressed.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
