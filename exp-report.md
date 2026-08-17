@@ -700,7 +700,7 @@ reuse Trait::foo {
 }
 
 // Desugaring:
-fn foo<Self>() {
+fn foo<Self>(self) {
     <Self as Trait>::foo({
         println!("Hello");
         self.0
@@ -712,13 +712,25 @@ then we would fail to apply adjustments, as by rust design block returns by-valu
 
 ```rust
 // Desugaring:
-fn foo<Self>() {
+fn foo<Self>(self) {
     println!("Hello");
     <Self as Trait>::foo(self.0)
 }
 ```
 
-We require that target expression has it final-return expression and all statements before it are put outside of the call path, thus we extend the number of cases we can apply adjustments to.
+If target expression does not contain final return expression we will generate all statements and propagate first argument unadjusted (meaning without applying target expression to it):
+
+```rust
+reuse Trait::foo {
+    println!("Hello");
+}
+
+// Desugaring:
+fn foo<Self>(self) {
+    println!("Hello");
+    <Self as Trait>::foo(self)
+}
+```
 
 ## `Self`-type mapping
 
@@ -881,8 +893,22 @@ The following errors are reported:
 - `parent segment of delegation to inherent impl can not contain infers` - infers are prohibited in delegation to inherent impls,
 - `UnsupportedDelegation` - when delegation to this entity is not supported,
 - `inferred lifetimes are not allowed in delegations as we need to inherit signature` - when we encountered infer regions during delegation signature inheritance,
+- `empty {$kind} delegation is not supported` - when empty list or glob delegation was written,
+- `glob delegation is only supported in impls` -when glob delegation is used outside of inherent or trait impl,
+- `qualified path without a trait in glob delegation` - when no trait is specified in glob delegation.
 
 This was the list of named diagnostics that are reported, if we encounter any other error, we would generate an "error" delegation - a function with no parameters that just calls the call path with lowered target expression, then other parts of the compiler will report real errors which caused errors in delegation generation. Delegation-related routines such as generics, clauses and signature inheritance are not executed for error delegations.
+
+Most of those diagnostics are attached to the whole span of delegation:
+```rust
+error: empty glob delegation is not supported
+  --> $DIR/empty-glob.rs:7:5
+   |
+LL |     reuse Trait::*;
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+```
 
 # Unresolved questions
 
