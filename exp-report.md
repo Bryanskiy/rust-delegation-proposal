@@ -33,10 +33,11 @@
 ## Finding signature function
 
 There are four entities that are involved in delegation generation:
+- Delegation itself (the word "delegation" sometimes used to denote generated function after AST -> HIR lowering),
+- Delegation parent,
 - Signature function,
 - Signature function parent,
-- Delegation parent,
-- Call path resolution.
+- Call path and its resolution, call path has two named segments: child segment which refers to a function and parent segment, which refers to the container of this function (either trait or ADT)
 
 ```rust
 // Signature function parent.
@@ -50,13 +51,14 @@ struct X;
 impl X {
     // Delegation, `Trait::foo` is a call path, who also has a resolution,
     // in most cases signature function resolution and call path resolution are the same.
+    // `Trait` is a parent segment, `foo` is a child segment.
     reuse Trait::foo;
 }
 ```
 
-The first thing to do is given delegation path `Trait::foo` find its signature function. There are two cases in this procedure:
+The first thing to do is given delegation `Trait::foo` find its signature function. There are three cases in this procedure:
 - Delegation from trait impl
-  When delegating from trait impl we should always generate a function whose signature matches the signature of trait, otherwise it would an invalid code:
+  When delegating from trait impl we should always generate a function whose signature matches the signature of trait function, otherwise it would an invalid code:
 
   ```rust
   trait Trait {
@@ -83,19 +85,20 @@ The first thing to do is given delegation path `Trait::foo` find its signature f
     fn bar(x: usize) { to_reuse::bar(x) }
   }
   ```
-
+- Delegation to inherent impl
+  Resolution for this case is not fully (and fairly) supported, as we need to perform typecheck method call resolution routine during AST -> HIR lowering, which is impossible in the current compiler architecture, for now a simple name-based resolution is implemented,
 - All other cases
-  The resolution of the signature function in all other cases matches the resolution of delegation path segment.
+  The resolution of the signature function in all other cases matches the resolution of the call path.
 
 ## Signature and clauses inheritance, generics
 
-When generating delegation we need to generate generics, inherit clauses and signature. Generics are inherited during AST -> HIR lowering, while clauses and signature are created during HIR analysis.
+When generating delegation we need to generate params, inherit clauses and signature. Generic params are generated during AST -> HIR lowering, while clauses and signature are created during HIR analysis.
 
 User can either specify generic arguments in delegation or use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that this generic param should be generated. Nested infers are not allowed: `reuse Trait::<Vec<_>, Box<_>>::foo`.
 
 ### Free-to-free
 
-In case of free-to-free delegation we simply copy generics from signature function:
+In case of free-to-free delegation we simply copy generic params from signature function:
 
 ```rust
 fn foo<'a, 'b: 'b, T, const X: usize>(&'a [T; X]) {}
@@ -118,7 +121,7 @@ fn oof<'b, const X: _>(arg0: _) -> _ where 'b:'b { foo::<'b, (), X>(arg0) }
 There are several moments to notice:
 - We generated hacky predicate `'b: 'b` in the bar delegation, as we can not generate standalone lifetime `'b` which will not be considered early-bound, this predicate is not used anywhere except to pass this lifetime forward,
 - In the second `baz` delegation user explicitly specified generic args, so we did not generated any generic params,
-- In the third example user used two infers at first and third generic argument positions, so we generate and propagate generic params for them, leaving the second generic argument untouched.
+- In the third example user used two infers at first and third generic argument positions, so we generated and propagated generic params for them, leaving the second generic argument untouched.
 
 ### Free-to-trait
 
@@ -159,7 +162,7 @@ fn bar3<'a, 'b, T, const B: _, U, const X: _>(arg0: _) -> _ where 'a:'a,
     'b:'b { <S as Trait::<'a, T, B>>::foo::<'b, U, X>(arg0) }
 ```
 
-User can specify generic arguments either in parent, child or parent and child segments. Moreover user can specify explicit `Self` parameter: `<S as Trait>::foo`. We always generate call path of the following pattern: `<Self as Trait</* propagated generic params if any */>>::foo::</* propagated generic params if any */>(...)`, where `Self`, parent and child generics can be either params of user-specified arguments.
+User can specify generic arguments either in parent, child or parent and child segments. Moreover user can specify explicit `Self` parameter: `<S as Trait>::foo`. We always generate call path of the following pattern: `<Self as Trait</* propagated generic params if any */>>::foo::</* propagated generic params if any */>(...)`, where `Self`, parent and child generics can be either params or user-specified arguments.
 
 The pattern of generated generic params is as follows: for `reuse Trait::foo` we have `[parent lifetimes], [child lifetime], Self, [parent types can consts], [child types and consts]`.
 
@@ -177,6 +180,7 @@ trait Trait {
     // Desugaring:
     #[attr = Inline(Hint)]
     fn foo<'a, T, const X: _>() -> _ where 'a:'a { foo::<'a, T, X>() }
+
     #[attr = Inline(Hint)]
     fn bar() -> _ { foo::<'static, (), 123>() }
 }
@@ -196,7 +200,6 @@ trait Trait {
 ```
 
 `foo` was not generated with `self` receiver instead it is treated as a "static" function with a single argument of type `impl Trait`.
-
 
 ### Trait-to-trait
 
@@ -241,7 +244,9 @@ We do not generate explicit `Self` generic parameter as in free to trait delegat
 
 ### TraitImpl-to-free
 
-In all trait impls delegations the signature function always resolves to a trait function, so the resolution of a call path and signature may differ. Moreover, as we need to generate a delegation that will match it signature in trait, meaning that no matter whether generic arguments are specified in the call path we should generate generic params from the signature function. Here we may encounter situations where generic params of the function and generic params of the call path function may differ. So in this case we just propagate generic params of delegation into the call path (if user did not provide generic arguments), and if they do not match then we will get an error (if generic arguments of the child are not specified and they will not be propagated we will get an error anyway).
+In all trait impls delegations the signature function always resolves to a trait function, so the resolution of a call path and signature may differ. Moreover, as we need to generate a delegation that will match it signature in trait, meaning that no matter whether generic arguments are specified in the call path we should generate generic params from the signature function. Here we may encounter situations where generic params of the function and generic params of the call path function may differ. So in this case we just propagate generic params of delegation into the call path (if user did not provide generic arguments), and if they do not match then we will get an error. 
+
+As an alternative design we could have not propagated generated generic params, but if generic arguments of the child segment are not specified and they will not be propagated we will get an error anyway. This will work only for call path functions that have no generic params.
 
 ```rust
 fn foo<T, U>(x: usize) {}
@@ -315,7 +320,7 @@ impl Trait for X {
 }
 ```
 
-We do not generate explicit `Self` param, as the situation with signature function resolution is the same as in trait impl to free delegation, moreover we ignore parent generics, if they are not specified then we would get an error, so the user should specify them explicitly: `reuse FromTrait::<'static, (), ()>::...`, infers both in child and parent segments are also ignored.
+We do not generate explicit `Self` param, as the situation with signature function resolution is the same as in trait impl to free delegation, moreover we ignore parent generics, if they are not specified then we would get an error, so the user should specify them explicitly: `reuse FromTrait::<'static, (), ()>::...`, infers both in child and parent segments are also ignored, meaning we do not generate generic params for them.
 
 ### Impl-to-free
 
@@ -347,7 +352,8 @@ Note that even if the signature function has `x: &X` first argument which matche
 
 ### Impl-to-trait
 
-Almost same as trait to trait delegation, with one exception that we change the type of receiver to type of the inherent impl ADT:
+Almost same as trait to trait delegation, with one exception that we change the type of receiver to type of the inherent impl ADT (if the receiver of the signature function has complex type, i.e., `Rc<Box<Self>>`, then it will be mapped to the same type with `Self` generic param replaced with ADT type: `Rc<Box<X>>`, the same works for all arguments, `Self` generic param will be replaced with ADT type).
+
 ```rust
 trait FromTrait<'a, B, C> {
     fn foo<T, U>(&self, x: usize) {}
@@ -427,13 +433,11 @@ trait Trait {
 
 ### TraitImpl-to-impl
 
-Here the resolution should look signature in trait as in other cases where we delegate from trait impl. We generate function whose signature matches the resolved function in trait. We propagate only child generics if they are not specified.
+Here the resolution should look for signature function in trait as in other cases where we delegate from trait impl. We generate function whose signature matches the resolved function in trait. We propagate only child generics if they are not specified.
 
 ```rust
 trait Trait {
-    fn foo<A, B, C>(&self) { }
     fn foo1<T, U, V>(&self) { }
-    fn foo2<'a, T, U, V>(&self) where 'a:'a { }
     fn foo3(&self) { }
 }
 
@@ -457,11 +461,10 @@ impl Trait for X<'_> {
 ### Impl-to-impl
 
 In inherent impl to inherent impl delegation we replace signature self type with delegation parent self type in case of methods.
+
 ```rust
 trait Trait {
-    fn foo<A, B, C>(&self) { }
     fn foo1<T, U, V>(&self) { }
-    fn foo2<'a, T, U, V>(&self) where 'a:'a { }
     fn foo3(&self) { }
 }
 
@@ -485,7 +488,7 @@ impl Trait for Y {
 
 ### Inheriting clauses and signature
 
-We construct delegation signature and clauses after AST -> HIR lowering, during analysis. For this purpose we copy clauses from signature function and its parent if present. Next, user can specify generic arguments in the delegation call path, so we need to consider them while building delegation's signature:
+We construct delegation signature and clauses after AST -> HIR lowering, during HIR analysis. For this purpose we copy clauses from signature function and its parent if present. Next, user can specify generic arguments in the delegation call path, so we need to consider them while building delegation's signature:
 
 ```rust
 fn foo<T>(t: T) {}
@@ -496,7 +499,7 @@ reuse foo::<usize> as bar;
 fn bar(t: usize) { foo::<usize>(t) }
 ```
 
-In the example above we want generated delegation to have argument of type `usize` and we do not want to generate generic param `T`. Moreover, if the signature function contains clauses we want map them onto user-specified generic arguments if they are present:
+In the example above we want generated delegation to have argument of type `usize` and we do not want to generate generic param `T`. Moreover, if the signature function contains clauses we want to map them onto user-specified generic arguments if they are present:
 
 ```rust
 trait Marker<T> {}
@@ -527,7 +530,7 @@ trait Trait2<A, B> {
 }
 ```
 
-So when mapping clauses and signature we also need to consider delegation's parent generics. Given all that and the possibility of different `Self` positions we construct the following generic arguments and remap table for generics:
+So when mapping clauses and signature we also need to consider delegation's parent generics. Given all that and the possibility of different `Self` positions we construct the following generic arguments array:
 
 ```rust
 /// [SELF | maybe self in the beginning]
@@ -548,7 +551,7 @@ So `Self` generic param is mapped into itself, first generic param of trait is m
 
 ### Alternative design
 
-As an alternative option we may have allowed to explicitly declare generic params in delegation:
+As an alternative option we may have allowed to explicitly declare generic params (and possibly clauses) in delegation:
 
 ```rust
 reuse<T, U> Trait::<Vec<T>>::foo::<Box<Box<U>>>;
@@ -618,7 +621,7 @@ impl S4 {
 reuse S4::trait_foo as trait_foo_reused;
 ```
 
-If we encounter cycle in recursive delegations chain then we report an error.
+If we encounter a cycle in recursive delegations chain then we report an error.
 
 ## Glob and list delegations, deletion of the target expression
 
@@ -647,7 +650,9 @@ impl<T: Trait> X<T> {
 List delegation can be used when delegating to traits or inherent impls, glob delegation can be used only when delegating to traits.
 
 Note that one of reused functions has no receiver, thus it would be incorrect to apply target expression in such delegation, that is why we need to remove it. Glob and list delegations are expanded before AST -> HIR lowering, meaning we have standalone delegations for each list or glob delegation. That in turn means that we already allocated `LocalDefId`s for contents of target
-expression that was duplicated for each standalone delegation. If we want to remove it for some delegations we need to delete arbitrary user code that is inside delegation's target expression, meaning potential deletion of already allocated inner `LocalDefId`s. Unfortunately, now it is hard to remove already allocated `LocalDefId` with zero performance cost as a lot of data structures that are used inside compiler are optimized for continuous ranges of number-like structs. Moreover, even if we alter existing data structures so they support deletion (or marking ids that should be considered deleted) next we have to think how to prevent leak of deleted ids, as in other features of rust compiler someone may store deleted id somewhere, bypassing our checks, and then access it when it is considered deleted by altered data structures. This require complex analysis of all data structures that are used in the compiler, when they are accessed and how to modify them in performance-friendly manner with an expressive infrastructure that will prevent leak of deleted ids.
+expression that was duplicated for each standalone delegation. If we want to remove it for some delegations we need to delete arbitrary user code that is inside delegation's target expression, meaning potential deletion of already allocated inner `LocalDefId`s. 
+
+Unfortunately, now it is hard to remove already allocated `LocalDefId` with zero performance cost as a lot of data structures that are used inside compiler are optimized for continuous ranges of number-based ids. Moreover, even if we alter existing data structures so they support deletion (or marking ids that should be considered deleted) next we have to think how to prevent leak of deleted ids, as in other features of rust compiler someone may store deleted id somewhere, bypassing our checks, and then access it when it is considered deleted by altered data structures. This require complex analysis of all data structures that are used in the compiler, when they are accessed and how to modify them in performance-friendly manner with an expressive infrastructure that will prevent leak of deleted ids.
 
 ## Adjustments for the "receiver" argument
 
@@ -664,7 +669,7 @@ impl<T: Trait> X<T> {
 }
 ```
 
-Consider the example above, when writing `self.0` target expression we implicitly think that it will compile with all three reused functions, however they all have different receivers: by value, by readonly reference and by mutable references. However, we want the code above to compile, adding implicit adjustments to the target expression like in a method call scenario: `self.by_mut_ref()` will automatically cast `self` to `&mut Self` when possible. This strategy was used in delegation for a long time, we simply generated method call and all adjustments that are supported by method call processing routine were automatically applied for delegations. However, there is one problem that made us to rethink this approach: propagation of parent generics. Consider the modified code below:
+Consider the example above, when writing `self.0` target expression we implicitly think that it will compile with all three reused functions, however they all have different receivers: by value, by readonly reference and by mutable reference. However, we want the code above to compile, adding implicit adjustments to the target expression like in a method call scenario: `self.by_mut_ref()` will automatically cast `self` to `&mut Self` when possible. This strategy was used in delegation for a long time, we simply generated method call and all adjustments that are supported by method call processing routine were automatically applied for delegations. However, there is one problem that made us to rethink this approach: propagation of parent generics. Consider the modified code below:
 
 ```rust
 trait Trait<U> {
@@ -687,6 +692,7 @@ impl<T: Trait<()>> X<T> {
 In this case we want to generate generic parameter `U` in generated delegations and propagate it into the call path, as it is shown in the snippet above. However, if we generate method call it would be impossible to propagate parent generics, that is why we decided to step away from the method call generation approach and generate usual call and apply adjustments as if we generated method call. That was implemented: we now reuse method call resolution routine in order to find adjustments and apply them to the first argument of the generated call. Thus we can simultaneously propagate parent generics and use implicit adjustments for user's convenience.
 
 Considering adjustments it becomes important how we generate target expression. If we simply generate target expression in the same way as user written it:
+
 ```rust
 reuse Trait::foo {
     println!("Hello");
@@ -703,6 +709,7 @@ fn foo<Self>() {
 ```
 
 then we would fail to apply adjustments, as by rust design block returns by-value. Instead we generate target expression in the following form:
+
 ```rust
 // Desugaring:
 fn foo<Self>() {
@@ -759,7 +766,7 @@ fn add(self: _, arg1: _)
     -> _ { from(Self { 0: MyAdd::add(self.0, self.0) }) }
 ```
 
-In the example above the `other` argument need to be mapped, as if we don't do it then we get code that does not compile. The intuition here is to apply target expression and adjustments not only to the first argument but for all arguments that need to be mapped. Note that we apply adjustments too:
+In the example above the `other` argument need to be mapped, as if we don't do it then we get code that does not compile. The intuition here is to apply target expression and adjustments not only to the first argument but for all arguments that need to be mapped:
 ```rust
 trait MyAdd {
     fn add(self: &Self, other: &mut Self, another_other: Self);
@@ -816,7 +823,7 @@ In the first (currently implemented) version reuse is placed in the beginning of
 
 ## Inherited and generated attributes
 
-When generating delegation we inherit and generate attributes. More specifically we inherit `must_use` attribute if it is specified on the signature function. The `inline` attribute is generated, only if there is no same attribute present on the delegation. In case of the recursive delegations, the inherited attribute is propagated on the whole chain of recursive delegations and can be overridden somewhere in this chain.
+When generating delegation we inherit and generate attributes. More specifically we inherit `must_use` attribute if it is specified on the signature function. The `inline` attribute is generated, only if there is no same attribute present on the delegation. In case of recursive delegations, the inherited attribute is propagated on the whole chain of recursive delegations and can be overridden somewhere in this chain.
 
 ```rust
 #[must_use = "reason"]
@@ -875,7 +882,7 @@ The following errors are reported:
 - `UnsupportedDelegation` - when delegation to this entity is not supported,
 - `inferred lifetimes are not allowed in delegations as we need to inherit signature` - when we encountered infer regions during delegation signature inheritance,
 
-This was the list of named diagnostics that are reported, if we encounter any other error, we would generate an "error" delegation - a function with no parameters that just calls the call path with lowered target expression, then other parts of the compiler will report real errors which caused errors in delegation generation.
+This was the list of named diagnostics that are reported, if we encounter any other error, we would generate an "error" delegation - a function with no parameters that just calls the call path with lowered target expression, then other parts of the compiler will report real errors which caused errors in delegation generation. Delegation-related routines such as generics, clauses and signature inheritance are not executed for error delegations.
 
 # Unresolved questions
 
