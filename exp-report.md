@@ -58,6 +58,7 @@ impl X {
 
 The first thing to do is given delegation `Trait::foo` find its signature function. There are three cases in this procedure:
 - Delegation from trait impl
+
   When delegating from trait impl we should always generate a function whose signature matches the signature of trait function, otherwise it would an invalid code:
 
   ```rust
@@ -86,8 +87,10 @@ The first thing to do is given delegation `Trait::foo` find its signature functi
   }
   ```
 - Delegation to inherent impl
+
   Resolution for this case is not fully (and fairly) supported, as we need to perform typecheck method call resolution routine during AST -> HIR lowering, which is impossible in the current compiler architecture, for now a simple name-based resolution is implemented,
 - All other cases
+
   The resolution of the signature function in all other cases matches the resolution of the call path.
 
 ## Signature and clauses inheritance, generics
