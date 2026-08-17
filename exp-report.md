@@ -88,14 +88,15 @@ The first thing to do is given delegation `Trait::foo` find its signature functi
   ```
 - Delegation to inherent impl
 
-  Resolution for this case is not fully (and fairly) supported, as we need to perform typecheck method call resolution routine during AST -> HIR lowering, which is impossible in the current compiler architecture, for now a simple name-based resolution is implemented,
+  Resolution for this case is not fully (and fairly) supported, as we need to perform typecheck method call resolution routine during AST -> HIR lowering, which is impossible in the current compiler architecture, for now a simple name-based resolution is implemented.
+
 - All other cases
 
   The resolution of the signature function in all other cases matches the resolution of the call path.
 
 ## Signature and clauses inheritance, generics
 
-When generating delegation we need to generate params, inherit clauses and signature. Generic params are generated during AST -> HIR lowering, while clauses and signature are created during HIR analysis.
+When generating delegation we need to generate generic params, inherit clauses and signature. Generic params are generated during AST -> HIR lowering, while clauses and signature are created during HIR analysis.
 
 User can either specify generic arguments in delegation or use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that this generic param should be generated. Nested infers are not allowed: `reuse Trait::<Vec<_>, Box<_>>::foo`.
 
@@ -901,17 +902,6 @@ The following errors are reported:
 - `qualified path without a trait in glob delegation` - when no trait is specified in glob delegation.
 
 This was the list of named diagnostics that are reported, if we encounter any other error, we would generate an "error" delegation - a function with no parameters that just calls the call path with lowered target expression, then other parts of the compiler will report real errors which caused errors in delegation generation. Delegation-related routines such as generics, clauses and signature inheritance are not executed for error delegations.
-
-Most of those diagnostics are attached to the whole span of delegation:
-```rust
-error: empty glob delegation is not supported
-  --> $DIR/empty-glob.rs:7:5
-   |
-LL |     reuse Trait::*;
-   |     ^^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
-```
 
 # Unresolved questions
 
