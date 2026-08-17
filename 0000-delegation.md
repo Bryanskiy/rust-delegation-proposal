@@ -43,6 +43,7 @@ The delegation item consists of a [fully qualified path](https://doc.rust-lang.o
 ```diff
 + Delegation →
 +     QualifiedPathInExpression BlockExpression
++   | QualifiedPathInExpression;
 ```
 
 Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)).
@@ -50,6 +51,15 @@ Qualified paths provide an unambiguous way to identify callable items, including
 TODO: why {}; `self` inside expression; generics; implementation notes about inherent methods; "refined"
 
 TODO
+
+## Header
+
+Function qualifiers are generated as follows:
+
+__const:__  If the callee is a const function, the generated function is also `const`. This is necessary for the delegation to be usable in const contexts. <br>
+__async__: If the callee is `async`, the generated function is also `async`. This is necessary for the delegation to be usable in async contexts. TODO: not sure about this. <br>
+__unsafe:__ If the callee is `unsafe`, the generated function is also `unsafe`. <br>
+__ABI:__ The generated function inherits the same ABI. <br>
 
 ## Drawbacks
 [drawbacks]: #drawbacks
