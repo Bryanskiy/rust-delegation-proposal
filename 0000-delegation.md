@@ -54,22 +54,35 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Like other items, delegation items may be annotated with a visibility modifier ([?](#how-should-the-visibility-of-the-generated-function-be-determined)) and may have attributes applied to them.
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) and may have attributes applied to them.
 
-The delegation item consists of a [fully qualified path](https://doc.rust-lang.org/reference/paths.html#qualified-paths) followed by a [block expression](https://doc.rust-lang.org/reference/expressions/block-expr.html):
+The delegation item has the form:
 ```diff
 + Delegation →
-+     QualifiedPathInExpression BlockExpression
-+   | QualifiedPathInExpression;
++     reuse DelegationPath ( BlockExpression | ; )
++
++ DelegationPath →
++     QualifiedPathType :: DelegationPathSegment
++   | QualifiedPathType :: { ( , DelegationPathSegment )+ ,? }
++   | QualifiedPathType :: *
++
++ DelegationPathSegment →
++     PathExprSegment ( as IDENTIFIER )?
 ```
 
 Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)).
+
+TODO: types/consts
+
+The delegation item comes in three flavors, matching the three forms of the `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation).
+
+### Individual delegation
 
 TODO: why {}; `self` inside expression; generics; implementation notes about inherent methods; "refined"
 
 TODO
 
-## Function header (function qualifiers)
+#### Function header (function qualifiers)
 
 Function qualifiers are generated as follows:
 
@@ -80,10 +93,20 @@ __ABI:__ The generated function inherits the same ABI. <br>
 
 TODO: coercion
 
+### List delegation
+
+TODO
+
+### Glob delegation
+
+TODO
+
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-TODO
+1. __Coverage__: Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
+2. __Potential redundancy__: The delegation feature could be implemented entirely via compile‑time reflection [(?)](#reflection) (if and when that becomes available).
+3. __Increased language complexity__: duh
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -109,12 +132,12 @@ Rust distinguishes between two kinds of function invocation. The first one is [m
 From the delegation's perspective the alternatives can be categorized as follows:
 
 1. __Resolve the callee from the method name alone.__
-[rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities as noted above.
+[rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities in a similar way to method calls.
 1. __Resolve the callee from the fully qualified path.__ This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax. This is the option chosen for this proposal and it can later be extended in a forward-compatible way to also support the first option.
 2. __Keywords as disambiguators.__ One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. This proposal doesn't take that approach. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
 3. __Analyse target expression.__ Another possibility is to use a target expression to infer the callee, i.e. the compiler would take the type of the expression and then resolve the method by name. This path is left for an alternative reflection-based language feature [(?)](#reflection).
 
-### How should the visibility of the generated function be determined?
+### Why may delegation items be annotated with a visibility modifier?
 
  The proposed syntax allows the visibility of a reused function to be specified independently from the visibility of the original definition. While this flexibility is desirable, it introduces a potential _semver hazard_:
 
@@ -140,6 +163,8 @@ TODO
 #### Reflection
 
 An alternative approach to delegation in Rust would be some form of compile-time reflection. Given the ability to inspect type information such as function signatures during macro expansion, delegation can be implemented entirely as a third-party library, removing the need for dedicated language support.
+
+However, reflection is a large and complex feature that may take years to implement and stabilise. Even if it becomes available it is not clear that it would be the suitable vehicle for delegation.
 
 Work in this direction is already being explored. See [reflection project goal](https://github.com/rust-lang/rust-project-goals/issues/406).
 
