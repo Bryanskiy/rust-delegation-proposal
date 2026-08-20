@@ -10,9 +10,26 @@
 Provide a syntactic sugar to automatically forward function calls.
 
 ## Motivation
-[motivation]: #motivation
 
-TODO
+Rust does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through _composition_: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Although these forwarding implementations are usually trivial they impose a practical cost in terms of verbosity and readability.
+
+Consider a common pattern found throughout real Rust codebases:
+
+```rust
+// library/alloc/src/collections/btree/set.rs
+
+impl<T: Hash, A: Allocator + Clone> Hash for BTreeSet<T, A> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.map.hash(state)
+    }
+}
+```
+
+The implementation does not introduce new behavior. It simply forwards a method call to a field. In practice the required repetition may even discourage the use of newtypes despite their advantages for type safety and abstraction. This situation highlights a gap in Rust’s ergonomics. While Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
+
+This limitation has long been recognized by the Rust community. TODO: link to prior work
+
+TODO: continue
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -52,7 +69,7 @@ TODO: why {}; `self` inside expression; generics; implementation notes about inh
 
 TODO
 
-## Header
+## Function header (function qualifiers)
 
 Function qualifiers are generated as follows:
 
@@ -60,6 +77,8 @@ __const:__  If the callee is a const function, the generated function is also `c
 __async__: If the callee is `async`, the generated function is also `async`. This is necessary for the delegation to be usable in async contexts. TODO: not sure about this. <br>
 __unsafe:__ If the callee is `unsafe`, the generated function is also `unsafe`. <br>
 __ABI:__ The generated function inherits the same ABI. <br>
+
+TODO: coercion
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -82,6 +101,8 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 - etc.
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
+
+TODO: notes about tradeoffs. Suggested extensions from previous proposals. Some cases might be covered by alternative features. (+ add links)
 
 Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which resolves to associated methods that take a receiver argument. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
@@ -144,9 +165,7 @@ Proposed extensions: renaming ([?]()), `Self` type mapping ([?]()), multiple tra
 
 #### Main reasons for proposal rejection
 
-_Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature. The mechanism for callee resolution is not defined.
-
-TODO: mechanism for desugaring is not defined
+_Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature. The mechanism for desugaring and callee resolution is not defined.
 
 _Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
 
