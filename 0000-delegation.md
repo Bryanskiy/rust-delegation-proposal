@@ -70,15 +70,19 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)).
+Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Delegation of types and constants is not supported ([?](#why-delegation-of-types-and-constants-is-not-supported)).
 
-TODO: types/consts
+> [!NOTE]
+>
+> Delegation to inherent methods is particularly complex to implement.
+>
+> TODO
+
+TODO: When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
 
 The delegation item comes in three flavors, matching the three forms of the `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation).
 
 ### Individual delegation
-
-TODO: why {}; `self` inside expression; generics; implementation notes about inherent methods; "refined"
 
 TODO
 
@@ -111,9 +115,18 @@ TODO
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-TODO
+- [Design decisions outlined in this RFC](#design-decisions-outlined-in-this-rfc)
+- [Alternatives to this RFC](#alternatives-to-this-rfc)
+- TODO: we have some statistics and we can add it here
 
-### Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?
+### Design decisions outlined in this RFC
+
+- [Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)
+- [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
+- [Why delegation of types and constants is not supported?](#why-delegation-of-types-and-constants-is-not-supported)
+- TODO: continue
+
+#### Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?
 
 Delegation is fundamentally the forwarding of function calls. A regular function in Rust may be a trait method, a method in a trait implementation, an inherent method, or a free function. We can form different combinations based on the position of a caller and a callee:
 
@@ -137,7 +150,7 @@ From the delegation's perspective the alternatives can be categorized as follows
 2. __Keywords as disambiguators.__ One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. This proposal doesn't take that approach. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
 3. __Analyse target expression.__ Another possibility is to use a target expression to infer the callee, i.e. the compiler would take the type of the expression and then resolve the method by name. This path is left for an alternative reflection-based language feature [(?)](#reflection).
 
-### Why may delegation items be annotated with a visibility modifier?
+#### Why may delegation items be annotated with a visibility modifier?
 
  The proposed syntax allows the visibility of a reused function to be specified independently from the visibility of the original definition. While this flexibility is desirable, it introduces a potential _semver hazard_:
 
@@ -156,9 +169,17 @@ Taking this into consideration, several design choices are possible:
 
 We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee. The visibility handling can be refined prior to stabilization based on experience and feedback and does not block this proposal.
 
+#### Why delegation of types and constants is not supported?
+
+Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
+
+TODO: alternatives
+
 ### Alternatives to this RFC
 
-TODO
+TODO: check Go lang
+
+TODO: macros with link to prior art
 
 #### Reflection
 
@@ -175,7 +196,7 @@ TODO: add macro based crates
 
 TODO: the whole point of previous RFCs analysis is to point out that there were issues with forward compatibility and unclear semantics. In new proposal we solve this by better "design space exploration".
 
-TODO: maybe remove extensions/prohibited features?
+TODO: consider what to write about extensions
 
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
@@ -185,16 +206,11 @@ Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfc
 
 where `expression` resolves to a value implementing `Trait`.
 
-Prohibited patterns: delegation of associated constants ([?]()), delegation of associated types ([?]()).<br>
-Proposed extensions: renaming ([?]()), `Self` type mapping ([?]()), multiple traits ([?]()),  delegation of enums ([?]()), arbitrary parent context ([?]()).
-
 #### Main reasons for proposal rejection
 
 _Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature. The mechanism for desugaring and callee resolution is not defined.
 
 _Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
-
-You can also check Boat's [summary](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
 
 ### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
 
@@ -205,13 +221,6 @@ Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/p
 where `expression` resolves to a field of `self` (e.g., `self.field`) and `typeof(expression)` implements `Trait`.
 
 Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Other cases are left for future extensions. Proposed desugaring scheme translates delegation item into method call([?](https://doc.rust-lang.org/reference/expressions/method-call-expr.html)) and therefore follows the corresponding method resolution scheme.
-
-Proposed extensions:
-- delegation of associated constants ([?]()), delegation of associated types ([?]()).
-> [!NOTE]
-> Types and functions/consts exist in separate namespaces. Therefore `fn`, `const` and `type` keywords were proposed to be used before callee names in order to disambiguate them.
-- TODO
-- misc (e.g. arbitrary expressions)
 
 #### Main reasons for proposal rejection
 
