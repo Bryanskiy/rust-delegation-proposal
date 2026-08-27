@@ -21,6 +21,7 @@
   - [`Self`-type mapping](#self-type-mapping)
   - [One-line trait reuse](#one-line-trait-reuse)
   - [Inherited and generated attributes](#inherited-and-generated-attributes)
+  - [Delegation to functions with default implementation](#delegation-to-functions-with-default-implementation)
 - [Diagnostics](#diagnostics)
 - [Unresolved questions](#unresolved-questions)
   - [Resolution of type-relative path during AST -\> HIR lowering](#resolution-of-type-relative-path-during-ast---hir-lowering)
@@ -99,6 +100,8 @@ The first thing to do is given delegation `Trait::foo` find its signature functi
 When generating delegation we need to generate generic params, inherit clauses and signature. Generic params are generated during AST -> HIR lowering, while clauses and signature are created during HIR analysis.
 
 User can either specify generic arguments in delegation or use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that this generic param should be generated. Nested infers are not allowed: `reuse Trait::<Vec<_>, Box<_>>::foo`.
+
+TODO: write about required generic args for parent segment and adjust examples.
 
 ### Free-to-free
 
@@ -813,7 +816,8 @@ struct Wrapper(S);
 reuse impl T for Wrapper { self.0 }
 ```
 
-The core idea is that we already have support for glob reuse, so in this scenario we want to transform one-line reuse into a trait impl block with a glob reuse in the following way:
+We want to provide a syntax for compact, one-line reuse of a whole trait. For this purpose we created a one-line trait reuse syntax `reuse impl <Trait> for <Something> { /* target expr. */ }.
+Under the hood it just gets translated into glob delegation with target expression:
 
 ```rust
 // Before:
@@ -881,6 +885,98 @@ trait Trait {
 #[attr = MustUse {reason: "overridden_reason"}]
 #[attr = Inline(Hint)]
 fn fourth<Self>() -> _ { <Self as Trait>::third() }
+```
+
+## Delegation to functions with default implementation
+
+When delegating to trait, whose functions have default implementation we do not skip them and always generate delegations for them. Which function will be called in generated delegation depends on the call-path and target expression:
+
+```rust
+trait Trait {
+    fn foo_default(&self) -> usize { 0 }
+    fn bar_default() -> usize { 0 }
+}
+
+struct S;
+impl Trait for S {
+    fn foo_default(&self) -> usize { 1 }
+    fn bar_default() -> usize { 1 }
+}
+
+struct S1;
+impl Trait for S1 {
+}
+
+struct W(S);
+impl Trait for W {
+    // All functions return `1`, as `S` overrides default implementation.
+    reuse <S as Trait>::* { self.0 }
+
+    // Desugaring:
+    #[attr = Inline(Hint)]
+    fn foo_default(self: _) -> _ { <S as Trait>::foo_default(self.0) }
+    #[attr = Inline(Hint)]
+    fn bar_default() -> _ { <S as Trait>::bar_default() }
+}
+
+struct W1(S1);
+impl Trait for W1 {
+    // All functions return `0`, as `S1` do not override implementation.
+    reuse <S1 as Trait>::* { self.0 }
+
+    // Desugaring:
+    #[attr = Inline(Hint)]
+    fn foo_default(self: _) -> _ { <S1 as Trait>::foo_default(self.0) }
+    #[attr = Inline(Hint)]
+    fn bar_default() -> _ { <S1 as Trait>::bar_default() }
+}
+
+fn bar_default() -> usize { 2 }
+
+struct W2;
+impl Trait for W2 {
+    // This function returns `2` as we generate delegation even if there
+    // is provided default implementation.
+    reuse bar_default;
+
+    // Desugaring:
+    #[attr = Inline(Hint)]
+    fn bar_default() -> _ { bar_default() }
+}
+
+struct W3(S);
+impl Trait for W3 {
+    // This function returns `1` as we delegate to `S` which overrides default
+    // implementation.
+    reuse Trait::foo_default { self.0 }
+
+    // Desugaring:
+    #[attr = Inline(Hint)]
+    fn foo_default(self: _) -> _ { Trait::foo_default(self.0) }
+}
+
+struct W4(S1);
+impl Trait for W4 {
+    // This function returns `0` as we delegate to `S1`.
+    reuse Trait::foo_default { self.0 }
+
+    // Desugaring:
+    #[attr = Inline(Hint)]
+    fn foo_default(self: _) -> _ { Trait::foo_default(self.0) }
+}
+
+pub fn check() {
+    assert_eq!(W(S).foo_default(), 1);
+    assert_eq!(W::bar_default(), 1);
+
+    assert_eq!(W1(S1).foo_default(), 0);
+    assert_eq!(W1::bar_default(), 0);
+
+    assert_eq!(W2::bar_default(), 2);
+
+    assert_eq!(W3(S).foo_default(), 1);
+    assert_eq!(W4(S1).foo_default(), 0);
+}
 ```
 
 # Diagnostics
