@@ -1,5 +1,5 @@
 
-- Feature Name: (fill me in with a unique ident, `delegation`)
+- Feature Name: (fill me in with a unique ident, `fn_delegation`)
 - Start Date: (fill me in with today's date, YYYY-MM-DD)
 - RFC PR: [rust-lang/rfcs#0000](https://github.com/rust-lang/rfcs/pull/0000)
 - Rust Issue: [rust-lang/rust#0000](https://github.com/rust-lang/rust/issues/0000)
@@ -8,6 +8,18 @@
 [summary]: #summary
 
 Provide a syntactic sugar to automatically forward function calls.
+
+### Terminology and conventions
+
+The following terminology is used in this proposal:
+
+- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
+- _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
+- _renaming_ -
+
+The following conventions are used in this proposal:
+
+TODO: examples, implementation notes, links
 
 ## Motivation
 
@@ -29,7 +41,7 @@ The implementation does not introduce new behavior. It simply forwards a method 
 
 This limitation has long been recognized by the Rust community. TODO: link to prior work
 
-TODO: continue
+This proposal revisits delegation with a more precise design.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -133,10 +145,13 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 - Delegating from a trait implementation to an implementation of the same trait.
 - Delegating from a trait implementation to an implementation of another trait.
 - Delegating from an inherent method to a trait implementation.
+- Delegating from a trait implementation to an inherent method.
 - Delegating from a free function to another free function.
 - etc.
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
+
+TODO: notes about tradeoffs. Suggested extensions from previous proposals. Some cases might be covered by alternative features. (+ add links)
 
 TODO: notes about tradeoffs. Suggested extensions from previous proposals. Some cases might be covered by alternative features. (+ add links)
 
@@ -194,7 +209,7 @@ Work in this direction is already being explored. See [reflection project goal](
 
 TODO: add macro based crates
 
-TODO: the whole point of previous RFCs analysis is to point out that there were issues with forward compatibility and unclear semantics. In new proposal we solve this by better "design space exploration".
+TODO: the whole point of previous RFCs analysis is to point out there were issues with forward compatibility and unclear semantics. In new proposal we solve this by better "design space exploration".
 
 TODO: consider what to write about extensions
 
@@ -208,7 +223,7 @@ where `expression` resolves to a value implementing `Trait`.
 
 #### Main reasons for proposal rejection
 
-_Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature. The mechanism for desugaring and callee resolution is not defined.
+_Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature. The mechanism for desugaring is not defined.
 
 _Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
 
@@ -220,7 +235,7 @@ Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/p
 
 where `expression` resolves to a field of `self` (e.g., `self.field`) and `typeof(expression)` implements `Trait`.
 
-Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Other cases are left for future extensions. Proposed desugaring scheme translates delegation item into method call([?](https://doc.rust-lang.org/reference/expressions/method-call-expr.html)) and therefore follows the corresponding method resolution scheme.
+Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Other cases are left for future extensions. Proposed desugaring scheme translates delegation item into [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html).
 
 #### Main reasons for proposal rejection
 
@@ -231,9 +246,9 @@ The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#
 
 TODO
 
-### What should the delegation keyword be named?
+### What keyword should be used?
 
-TODO
+The draft uses `reuse`, but other options like `delegate` or `forward` could be considered. The keyword should not conflict with existing identifiers and should be intuitive.
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
