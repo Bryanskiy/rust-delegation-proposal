@@ -15,11 +15,16 @@ The following terminology is used in this proposal:
 
 - _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
 - _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
-- _renaming_ -
+- _renaming_ - the ability to give the generated function a name that differs from the callee's name.
+- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items)
+- _desugaring_ - the translation from a delegation item into regular function calls.
+- TODO
 
 The following conventions are used in this proposal:
 
 TODO: examples, implementation notes, links
+
+TODO: desugaring might be a subject of a change
 
 ## Motivation
 
@@ -46,12 +51,24 @@ This proposal revisits delegation with a more precise design.
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
+Delegation items resemble `use` declarations.
+
+```rust
+// Import
+#[attrs]
+pub(vis) use prefix::{a, b, c as d};
+
+// Delegation item
+#[attrs]
+pub(vis) reuse prefix::{a, b, c as d} { target_expr }
+```
+
 TODO
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This proposal introduces a new [item kind](https://doc.rust-lang.org/reference/items.html), the _delegation item_:
+This proposal introduces a new [item kind](https://doc.rust-lang.org/reference/items.html), the delegation item:
 
 ```diff
 Item →
@@ -86,9 +103,12 @@ Qualified paths provide an unambiguous way to identify callable items, including
 
 > [!NOTE]
 >
-> Delegation to inherent methods is particularly complex to implement.
+> Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows(See [RFC 0132](https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md)):
+> - a path to a free function (e.g., `module::func`).
+> - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
+> - a type-relative path (e.g., `<T>::default`);
 >
-> TODO
+>
 
 TODO: When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
 
@@ -110,6 +130,8 @@ __ABI:__ The generated function inherits the same ABI. <br>
 TODO: coercion
 
 ### List delegation
+
+TODO: consider how different target expressions might be applied to individual items like with use chain shortcuts.
 
 TODO
 
@@ -151,11 +173,7 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
-TODO: notes about tradeoffs. Suggested extensions from previous proposals. Some cases might be covered by alternative features. (+ add links)
-
-TODO: notes about tradeoffs. Suggested extensions from previous proposals. Some cases might be covered by alternative features. (+ add links)
-
-Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which resolves to associated methods that take a receiver argument. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
+Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
 From the delegation's perspective the alternatives can be categorized as follows:
 
@@ -249,6 +267,8 @@ TODO
 ### What keyword should be used?
 
 The draft uses `reuse`, but other options like `delegate` or `forward` could be considered. The keyword should not conflict with existing identifiers and should be intuitive.
+
+TODO: `use` is one of the alternatives, check concerns from first proposal.
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
