@@ -87,7 +87,7 @@ Delegation items can be declared in any position where items are allowed. They a
 
 > [!NOTE]
 >
-> The compiler may automatically add attributes to a function, either by inheriting them from its callee or by generating them directly. For instance, the current implementation adds the `#[inline]` attribute.
+> The compiler may automatically add some attributes to a function, either by inheriting them from its callee or by generating them directly. For instance, the current implementation adds the `#[inline]` attribute.
 
 The delegation item has the form:
 ```diff
@@ -103,7 +103,7 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-qualified-paths)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)). Delegation of types and constants is not supported ([?](#why-delegation-of-types-and-constants-is-not-supported)).
+Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-qualified-paths)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-delegation-of-types-and-constants-not-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants--not-supported)).
 
 > [!NOTE]
 >
@@ -121,6 +121,10 @@ The delegation item comes in three flavors, matching the three forms of the `Del
 ### Individual delegation
 
 Function qualifiers are inherited unchanged from the callee [(?)](#why-are-function-qualifiers-inherited-unchanged-from-the-callee).
+
+TODO
+
+Delegation of variadic functions is not supported [(?)](#why-is-delegation-of-variadic-functions-not-supported).
 
 TODO
 
@@ -153,8 +157,9 @@ TODO
 - [Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)
 - [Why is `Self` type allowed in qualified paths?](#why-is-self-type-allowed-in-qualified-paths)
 - [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
-- [Why delegation of types and constants is not supported?](#why-delegation-of-types-and-constants-is-not-supported)
+- [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
 - [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
+- [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 - TODO:
 
 #### Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?
@@ -216,7 +221,7 @@ Taking this into consideration, several design choices are possible:
 
 We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee. The visibility handling can be refined prior to stabilization based on experience and feedback and does not block this proposal.
 
-#### Why delegation of types and constants is not supported?
+#### Why is delegation of types and constants not supported?
 
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
 
@@ -236,6 +241,9 @@ Programmer who wants a different behavior can still write a wrapper by hand.
 
 TODO: fn ptr coercion
 
+#### Why is delegation of variadic functions not supported?
+
+TODO: find github issue
 
 ### Alternatives to this RFC
 
