@@ -11,12 +11,12 @@ Provide a syntactic sugar to automatically forward function calls.
 
 ### Terminology and conventions
 
-The following terminology is used in this proposal:
+The following terminology is frequently used in this proposal:
 
 - _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
 - _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
-- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items)
+- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
 - _desugaring_ - the translation from a delegation item into regular function calls.
 - TODO
 
@@ -46,7 +46,7 @@ The implementation does not introduce new behavior. It simply forwards a method 
 
 This limitation has long been recognized by the Rust community. TODO: link to prior work
 
-This proposal revisits delegation with a more precise design.
+This proposal revisits delegation.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -85,6 +85,10 @@ Item →
 
 Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) and may have attributes applied to them.
 
+> [!NOTE]
+>
+> The compiler may automatically add attributes to a function, either by inheriting them from its callee or by generating them directly. For instance, the current implementation adds the `#[inline]` attribute.
+
 The delegation item has the form:
 ```diff
 + Delegation →
@@ -108,26 +112,17 @@ Qualified paths provide an unambiguous way to identify callable items, including
 > - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
 > - a type-relative path (e.g., `<T>::default`);
 >
->
+> TODO: continue
 
-TODO: When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
+TODO: Need a separate section/list of rules with target expression. When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
 
 The delegation item comes in three flavors, matching the three forms of the `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation).
 
 ### Individual delegation
 
+Function qualifiers are inherited unchanged from the callee [(?)](#why-are-function-qualifiers-inherited-unchanged-from-the-callee).
+
 TODO
-
-#### Function header (function qualifiers)
-
-Function qualifiers are generated as follows:
-
-__const:__  If the callee is a const function, the generated function is also `const`. This is necessary for the delegation to be usable in const contexts. <br>
-__async__: If the callee is `async`, the generated function is also `async`. This is necessary for the delegation to be usable in async contexts. TODO: not sure about this. <br>
-__unsafe:__ If the callee is `unsafe`, the generated function is also `unsafe`. <br>
-__ABI:__ The generated function inherits the same ABI. <br>
-
-TODO: coercion
 
 ### List delegation
 
@@ -158,7 +153,8 @@ TODO
 - [Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)
 - [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
 - [Why delegation of types and constants is not supported?](#why-delegation-of-types-and-constants-is-not-supported)
-- TODO: continue
+- [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
+- TODO:
 
 #### Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?
 
@@ -177,11 +173,23 @@ Rust distinguishes between two kinds of function invocation. The first one is [m
 
 From the delegation's perspective the alternatives can be categorized as follows:
 
-1. __Resolve the callee from the method name alone.__
-[rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities in a similar way to method calls.
-1. __Resolve the callee from the fully qualified path.__ This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax. This is the option chosen for this proposal and it can later be extended in a forward-compatible way to also support the first option.
-2. __Keywords as disambiguators.__ One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. This proposal doesn't take that approach. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
-3. __Analyse target expression.__ Another possibility is to use a target expression to infer the callee, i.e. the compiler would take the type of the expression and then resolve the method by name. This path is left for an alternative reflection-based language feature [(?)](#reflection).
+1. Resolve the callee from the method name alone.
+
+    [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities in a similar way to method calls.
+
+1. Resolve the callee from the fully qualified path.
+
+   This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax.
+
+2. Use keywords as disambiguators.
+
+    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. This proposal doesn't take that approach. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity. TODO: generics
+
+3. Analyse target expression.
+
+   Another possibility is to use a target expression to infer the callee, i.e. the compiler would take the type of the expression and then resolve the method by name. This path is left for an alternative reflection-based language feature [(?)](#reflection).
+
+The second option has been chosen for this proposal. It can later be extended in a forward-compatible way to also support the first option. TODO: link to future work
 
 #### Why may delegation items be annotated with a visibility modifier?
 
@@ -207,6 +215,21 @@ We prefer to leave all control to the user while also adding a deny-by-default l
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
 
 TODO: alternatives
+
+#### Why are function qualifiers inherited unchanged from the callee?
+
+
+The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`.
+
+- If the callee is a const function, the generated function is also `const`. This is necessary for the delegation to be usable in const contexts. <br>
+- If the callee is `async`, the generated function is also `async`. This is necessary for the delegation to be usable in async contexts. <br>
+- If the callee is `unsafe`, the generated function is also `unsafe`. Delegation merely forwards the call and cannot verify the safety contract required by the callee. Therefore, the same safety obligations must be imposed on caller. <br>
+- The generated function inherits the same ABI. <br>
+
+Programmer who wants a different behavior can still write a wrapper by hand.
+
+TODO: fn ptr coercion
+
 
 ### Alternatives to this RFC
 
