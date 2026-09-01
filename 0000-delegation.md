@@ -189,13 +189,16 @@ From the delegation's perspective the alternatives can be categorized as follows
 
 2. Use keywords as disambiguators.
 
-    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. This proposal doesn't take that approach. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity. TODO: generics
+    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. TODO: generics
 
 3. Analyse target expression.
 
    Another possibility is to use a target expression to infer the callee, i.e. the compiler would take the type of the expression and then resolve the method by name. This path is left for an alternative reflection-based language feature [(?)](#reflection).
 
-The second option has been chosen for this proposal. It can later be extended in a forward-compatible way to also support the first option. TODO: link to future work
+The second option has been chosen for this proposal. It can later be extended in a forward-compatible way to also support the first option. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
+
+
+ TODO: link to future work
 
 #### Why is `Self` type allowed in qualified paths?
 
