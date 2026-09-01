@@ -83,7 +83,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) and may have attributes applied to them.
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-qualified-paths)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) and may have attributes applied to them.
 
 > [!NOTE]
 >
@@ -151,6 +151,7 @@ TODO
 ### Design decisions outlined in this RFC
 
 - [Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)
+- [Why is `Self` type allowed in qualified paths?](#why-is-self-type-allowed-in-qualified-paths)
 - [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
 - [Why delegation of types and constants is not supported?](#why-delegation-of-types-and-constants-is-not-supported)
 - [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
@@ -190,6 +191,11 @@ From the delegation's perspective the alternatives can be categorized as follows
    Another possibility is to use a target expression to infer the callee, i.e. the compiler would take the type of the expression and then resolve the method by name. This path is left for an alternative reflection-based language feature [(?)](#reflection).
 
 The second option has been chosen for this proposal. It can later be extended in a forward-compatible way to also support the first option. TODO: link to future work
+
+#### Why is `Self` type allowed in qualified paths?
+
+TODO: methods without receiver </br>
+TODO: example with `Iterator` and `UnordItems`
 
 #### Why may delegation items be annotated with a visibility modifier?
 
