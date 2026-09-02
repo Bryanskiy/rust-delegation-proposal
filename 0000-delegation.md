@@ -83,7 +83,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)) and may have attributes applied to them [(?)](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee).
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
 
 The delegation item has the form:
 ```diff
@@ -120,11 +120,11 @@ The delegation item comes in three flavors, matching the three forms of the `Del
 
 Individual delegation is the simplest form: it declares exactly one new item, forwarding to exactly one callee named by `DelegationPath`.
 
-Function qualifiers are inherited unchanged from the callee. None of these qualifiers can be added, removed, or overridden at the delegation site [(?)](#why-are-function-qualifiers-inherited-unchanged-from-the-callee).
+Function qualifiers are inherited unchanged from the callee. None of these qualifiers can be added, removed, or overridden at the delegation site ([?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)).
 
 TODO
 
-Delegation of variadic functions is not supported [(?)](#why-is-delegation-of-variadic-functions-not-supported).
+Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
 
 TODO
 
@@ -235,13 +235,13 @@ We prefer to leave all control to the user while also adding a deny-by-default l
 
 #### Why are attributes manually added instead of being inherited from the callee?
 
-Delegation item is a distinct item that may deliberately want different behavior here than its callee.
+Delegation item is a distinct item that may deliberately want different behavior than its callee.
 
 Attributes may affect diagnostics, linking, documentation, or the item's public API contract and auto-inheriting attributes would also mean a delegation item's meaning could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
 > [!NOTE]
 >
-> The compiler may automatically add some attributes to a function whenever doing so doesn't change observable behavior. For instance, the current implementation adds the `#[inline]` attribute: inlining is purely an optimizer decision, so it can't change what the delegating item means, and it keeps a forwarding-only wrapper as close to zero-cost as writing the call by hand.
+> The compiler may automatically add some attributes to a function whenever doing so doesn't change observable behavior. For instance, the current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
 
 #### Why is delegation of types and constants not supported?
 
