@@ -83,7 +83,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) nd may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
 
 The delegation item has the form:
 ```diff
@@ -192,22 +192,24 @@ From the delegation's perspective the alternatives can be categorized as follows
 
     [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities in a similar way to method calls.
 
-1. Resolve the callee from the fully qualified path.
+    > [!NOTE]
+    >
+    > One of the possibilities to infer the callee is to analyse target expression, i.e. the compiler would take the type of the expression(e.g. `typeof(expression)`) and then resolve the method by name. This approach raises open questions of its own: how ambiguities between multiple equally-named candidates would be resolved, and how broad a range of cases such inference could realistically support. For these reasons, it is left to a possible alternative reflection-based language feature [(?)](#reflection).
+
+2. Resolve the callee from the fully qualified path.
 
    This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax.
 
-2. Use keywords as disambiguators.
+3. Use keywords as disambiguators.
 
-    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. TODO: generics
-
-3. Analyse target expression.
-
-   Another possibility is to use a target expression to infer the callee, i.e. the compiler would take the type of the expression and then resolve the method by name. This path is left for an alternative reflection-based language feature [(?)](#reflection).
-
-The second option has been chosen for this proposal. It can later be extended in a forward-compatible way to also support the first option. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
+    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach cannot distinguish between multiple generic implementations of the same trait.
 
 
- TODO: link to future work
+The second option has been chosen for this proposal. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
+
+the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way. TODO: link to future work
+
+TODO: we have to answer both questions here
 
 #### Why is `Self` type allowed in qualified paths?
 
@@ -216,7 +218,7 @@ TODO: example with `Iterator` and `UnordItems`
 
 #### Why may delegation items be annotated with a visibility modifier?
 
- The proposed syntax allows the visibility of a reused function to be specified independently from the visibility of the original definition. While this flexibility is desirable, it introduces a potential _semver hazard_:
+The ability to specify a reused function's visibility independently of the original's is a welcome flexibility, yet it introduces a potential semver hazard:
 
 ```rust
 fn foo<T: Copy>(x: T) { /* impl */ }
@@ -237,7 +239,7 @@ We prefer to leave all control to the user while also adding a deny-by-default l
 
 Delegation item is a distinct item that may deliberately want different behavior than its callee.
 
-Attributes may affect diagnostics, linking, documentation, or the item's public API contract and auto-inheriting attributes would also mean a delegation item's meaning could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
+Attributes may affect diagnostics, linking, documentation, or the item's public API contract and auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
 > [!NOTE]
 >
