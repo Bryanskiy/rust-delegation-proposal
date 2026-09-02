@@ -83,11 +83,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)) and may have attributes applied to them.
-
-> [!NOTE]
->
-> The compiler may automatically add some attributes to a function, either by inheriting them from its callee or by generating them directly. For instance, the current implementation adds the `#[inline]` attribute.
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)) and may have attributes applied to them [(?)](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee).
 
 The delegation item has the form:
 ```diff
@@ -112,6 +108,8 @@ Qualified paths provide an unambiguous way to identify callable items, including
 > - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
 > - a type-relative path (e.g., `<T>::default`);
 >
+> Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a _compatible_ signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
+>
 > TODO: continue
 
 TODO: Need a separate section/list of rules with target expression. When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
@@ -120,7 +118,9 @@ The delegation item comes in three flavors, matching the three forms of the `Del
 
 ### Individual delegation
 
-Function qualifiers are inherited unchanged from the callee [(?)](#why-are-function-qualifiers-inherited-unchanged-from-the-callee).
+Individual delegation is the simplest form: it declares exactly one new item, forwarding to exactly one callee named by `DelegationPath`.
+
+Function qualifiers are inherited unchanged from the callee. None of these qualifiers can be added, removed, or overridden at the delegation site [(?)](#why-are-function-qualifiers-inherited-unchanged-from-the-callee).
 
 TODO
 
@@ -128,13 +128,21 @@ Delegation of variadic functions is not supported [(?)](#why-is-delegation-of-va
 
 TODO
 
+callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+
+TODO
+
 ### List delegation
+
+List delegation declares several items at once from a shared path prefix. This desugars to one individual delegation item per name.
 
 TODO: consider how different target expressions might be applied to individual items like with use chain shortcuts.
 
 TODO
 
 ### Glob delegation
+
+Glob delegation delegates every method of a trait in one go. It's only permitted inside a trait implementations.
 
 TODO
 
@@ -157,6 +165,7 @@ TODO
 - [Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)
 - [Why is `Self` type allowed in qualified paths?](#why-is-self-type-allowed-in-qualified-paths)
 - [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
+- [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
 - [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
 - [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
 - [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
@@ -224,6 +233,16 @@ Taking this into consideration, several design choices are possible:
 
 We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee. The visibility handling can be refined prior to stabilization based on experience and feedback and does not block this proposal.
 
+#### Why are attributes manually added instead of being inherited from the callee?
+
+Delegation item is a distinct item that may deliberately want different behavior here than its callee.
+
+Attributes may affect diagnostics, linking, documentation, or the item's public API contract and auto-inheriting attributes would also mean a delegation item's meaning could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
+
+> [!NOTE]
+>
+> The compiler may automatically add some attributes to a function whenever doing so doesn't change observable behavior. For instance, the current implementation adds the `#[inline]` attribute: inlining is purely an optimizer decision, so it can't change what the delegating item means, and it keeps a forwarding-only wrapper as close to zero-cost as writing the call by hand.
+
 #### Why is delegation of types and constants not supported?
 
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
@@ -277,11 +296,11 @@ Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfc
 - `impl Trait for Type { use expression; }` - delegates all methods of the trait. <br>
 - `impl Trait for Type { use expression for name_1 (, name_i)*; }` - delegates a subset of the trait's methods (one or more, listed by name).
 
-where `expression` resolves to a value implementing `Trait`.
+where `typeof(expression)` implements `Trait`.
 
 #### Main reasons for proposal rejection
 
-_Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature. The mechanism for desugaring is not defined.
+_Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior. The mechanism for desugaring is not defined. Also see [comment](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
 
 _Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
 
@@ -293,7 +312,7 @@ Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/p
 
 where `expression` resolves to a field of `self` (e.g., `self.field`) and `typeof(expression)` implements `Trait`.
 
-Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Other cases are left for future extensions. Proposed desugaring scheme translates delegation item into [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html).
+Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Proposed desugaring scheme translates delegation item into [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html).
 
 #### Main reasons for proposal rejection
 
