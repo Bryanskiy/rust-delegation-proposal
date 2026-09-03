@@ -362,6 +362,34 @@ where `expression` resolves to a field of `self` (e.g., `self.field`) and `typ
 
 Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Proposed desugaring scheme translates delegation item into [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html).
 
+#### Main reasons for proposal rejection
+
+The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011) due to the lang team bandwidth. Additionally, forward compatibility concerns were never fully addressed.
+
+### [crates.io/delegate](https://crates.io/crates/delegate)
+
+One of the most used crate for delegation. It implements the `delegate!` declarative macro, which delegates method calls to selected expressions.
+
+__Strengths__:
+
+- The main advantage is the variety of transformations of the signature and the body of the generated method.
+
+__Weaknesses__:
+
+TODO:
+
+### [crates.io/ambassador](http://crates.io/crates/ambassador)
+
+The second most popular crate for delegation. in contrast with [delegate](https://crates.io/crates/delegate), procedural macros are used, not declarative ones.
+
+Strengths:
+
+TODO:
+
+Weaknesses:
+
+TODO:
+
 ### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018)
 
 TODO: this is not delegation, but the use case can be covered by delegation.
@@ -369,10 +397,6 @@ TODO: this is not delegation, but the use case can be covered by delegation.
 ### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024)
 
 TODO: this is not delegation, but the use case can be covered by delegation.
-
-#### Main reasons for proposal rejection
-
-The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011) due to the lang team bandwidth. Additionally, forward compatibility concerns were never fully addressed.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
