@@ -261,6 +261,10 @@ Taking this into consideration, several design choices are possible:
 
 We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee. The visibility handling can be refined prior to stabilization based on experience and feedback and does not block this proposal.
 
+_See the following sections for unresolved questions_:
+
+- [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
+
 #### Why are attributes manually added instead of being inherited from the callee?
 
 Delegation item is a distinct item that may deliberately want different behavior than its callee.
@@ -351,11 +355,19 @@ The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#
 
 TODO
 
+### Should the visibility of the delegation item be restricted?
+
+TODO
+
+↩ [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
+
 ### What keyword should be used?
 
 The draft uses `reuse`, but other options like `delegate` or `forward` could be considered. The keyword should not conflict with existing identifiers and should be intuitive.
 
 TODO: `use` is one of the alternatives, check concerns from first proposal.
+
+↩ [reference-level explanation](#reference-level-explanation)
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
