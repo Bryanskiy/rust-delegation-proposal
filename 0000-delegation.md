@@ -9,6 +9,8 @@
 
 Provide a syntactic sugar to automatically forward function calls.
 
+This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
+
 ## Terminology and conventions
 
 The following terminology is frequently used in this proposal:
@@ -204,7 +206,7 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
-In this proposal we support every combination rather than special-casing the most common ones, because the chosen name resolution scheme permits to resolve every kind of callee, and every combination lowers through the same desugaring scheme once the path is resolved.
+In this proposal we support every combination rather than special-casing the most common ones, because the chosen name resolution scheme permits to resolve every kind of callee.
 
 _See the following sections for rational/alternatives_:
 
@@ -220,7 +222,7 @@ From the delegation's perspective the alternatives can be categorized as follows
 
 1. Resolve the callee from the method name alone.
 
-    [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities in a similar way to method calls.
+    [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations ([?](#why-can-delegation-items-be-declared-in-any-position)) since it can lead to ambiguities in a similar way to method calls.
 
     __Note:__ One of the possibilities to infer the callee is to analyse target expression, i.e. the compiler would take the type of the expression(e.g. `typeof(expression)`) and then resolve the method by name. This approach raises open questions of its own: how ambiguities between multiple equally-named candidates would be resolved, and how broad a range of cases such inference could realistically support. For these reasons, it is left to a possible alternative reflection-based language feature [(?)](#reflection).
 
@@ -234,6 +236,10 @@ From the delegation's perspective the alternatives can be categorized as follows
 
 
 The second option has been chosen for this proposal. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
+
+_See the following sections for rationale/alternatives_:
+
+- [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
 
 _See the following sections for future possibilities_:
 
@@ -279,6 +285,8 @@ Delegation item is a distinct item that may deliberately want different behavior
 
 Attributes may affect diagnostics, linking, documentation, or the item's public API contract and auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
+TODO: default attributes that should be inherited. There should be a posibility to opt out.
+
 > [!NOTE]
 >
 > The compiler may automatically add some attributes to a function whenever doing so doesn't change observable behavior. For instance, the current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
@@ -303,7 +311,7 @@ The function header comprises qualifiers such as `const`, `async`, `unsafe`, `ex
 
 Programmer who wants a different behavior can still write a wrapper by hand.
 
-TODO: fn ptr coercion
+One further consequence worth noting: because a delegation item's ABI, `unsafe`-ness, and `async`-ness are always identical to the callee's, a delegation item can be coerced to a function pointer or passed anywhere the callee itself could be.
 
 ↩ [individual delegation](#individual-delegation)
 
@@ -378,15 +386,16 @@ __Weaknesses__:
 
 TODO:
 
+
 ### [crates.io/ambassador](http://crates.io/crates/ambassador)
 
 The second most popular crate for delegation. in contrast with [delegate](https://crates.io/crates/delegate), procedural macros are used, not declarative ones.
 
-Strengths:
+__Strengths__:
 
 TODO:
 
-Weaknesses:
+__Weaknesses__:
 
 TODO:
 
@@ -394,18 +403,20 @@ TODO:
 
 TODO: this is not delegation, but the use case can be covered by delegation.
 
-### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024)
+### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024, merged)
+
+This RFC allows a use declaration to bring a trait's associated function into scope by path, e.g. `use SomeTrait::some_fn;`.
 
 TODO: this is not delegation, but the use case can be covered by delegation.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-TODO
+The questions below are not expected to block acceptance of this RFC. Each is either a refinement that can be settled during implementation or before stabilization.
 
 ### Should the visibility of the delegation item be restricted?
 
-TODO
+TODO:
 
 ↩ [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
 
