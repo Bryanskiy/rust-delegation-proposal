@@ -210,6 +210,8 @@ _See the following sections for rational/alternatives_:
 
 - [why are qualified paths used for call disambiguation?](#why-are-qualified-paths-used-for-call-disambiguation)
 
+↩ [reference-level explanation](#reference-level-explanation)
+
 #### why are qualified paths used for call disambiguation?
 
 __Note__: Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
@@ -237,10 +239,14 @@ _See the following sections for future possibilities_:
 
 - [name-based resolution as sugar](#name-based-resolution-as-sugar)
 
+↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
+
 #### Why is `Self` type allowed in qualified paths?
 
 TODO: methods without receiver </br>
 TODO: example with `Iterator` and `UnordItems`
+
+↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
 #### Why may delegation items be annotated with a visibility modifier?
 
@@ -265,6 +271,8 @@ _See the following sections for unresolved questions_:
 
 - [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
 
+↩ [reference-level explanation](#reference-level-explanation)
+
 #### Why are attributes manually added instead of being inherited from the callee?
 
 Delegation item is a distinct item that may deliberately want different behavior than its callee.
@@ -274,6 +282,8 @@ Attributes may affect diagnostics, linking, documentation, or the item's public 
 > [!NOTE]
 >
 > The compiler may automatically add some attributes to a function whenever doing so doesn't change observable behavior. For instance, the current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
+
+↩ [reference-level explanation](#reference-level-explanation)
 
 #### Why is delegation of types and constants not supported?
 
@@ -295,15 +305,23 @@ Programmer who wants a different behavior can still write a wrapper by hand.
 
 TODO: fn ptr coercion
 
+↩ [individual delegation](#individual-delegation)
+
 #### Why is delegation of variadic functions not supported?
 
 TODO: find github issue
+
+↩ [individual delegation](#individual-delegation)
 
 ### Alternatives to this RFC
 
 TODO: check Go lang
 
 TODO: macros with link to prior art
+
+#### Inheritance
+
+TODO
 
 #### Reflection
 
@@ -317,8 +335,6 @@ Work in this direction is already being explored. See [reflection project goal](
 [prior-art]: #prior-art
 
 TODO: add macro based crates
-
-TODO: the whole point of previous RFCs analysis is to point out there were issues with forward compatibility and unclear semantics. In new proposal we solve this by better "design space exploration".
 
 TODO: consider what to write about extensions
 
@@ -345,6 +361,14 @@ Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/p
 where `expression` resolves to a field of `self` (e.g., `self.field`) and `typeof(expression)` implements `Trait`.
 
 Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Proposed desugaring scheme translates delegation item into [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html).
+
+### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018)
+
+TODO: this is not delegation, but the use case can be covered by delegation.
+
+### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024)
+
+TODO: this is not delegation, but the use case can be covered by delegation.
 
 #### Main reasons for proposal rejection
 
