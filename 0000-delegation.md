@@ -20,6 +20,7 @@ The following terminology is frequently used in this proposal:
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
 - _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
 - _desugaring_ - the translation from a delegation item into regular function calls.
+- _delegation pattern_ -
 - TODO
 
 The following conventions are used in this proposal:
@@ -119,7 +120,7 @@ _See the following sections for unresolved questions_:
 
 ### Qualified paths and name resolution
 
-Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-qualified-paths)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
+Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-delegation-paths)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
 
 > [!NOTE]
 >
@@ -135,7 +136,7 @@ Qualified paths provide an unambiguous way to identify callable items, including
 _See the following sections for rationale/alternatives_:
 
 - [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
-- [Why is `Self` type allowed in qualified paths?](#why-is-self-type-allowed-in-qualified-paths)
+- [Why is `Self` type allowed in delegation paths?](#why-is-self-type-allowed-in-delegation-paths)
 - [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
 
 ### Target expression
@@ -232,7 +233,7 @@ From the delegation's perspective the alternatives can be categorized as follows
 
 3. Use keywords as disambiguators.
 
-    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach cannot distinguish between multiple generic implementations of the same trait.
+    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach doesn't generalize well to generic contexts. For example, it cannot distinguish between multiple generic implementations of the same trait.
 
 
 The second option has been chosen for this proposal. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
@@ -247,10 +248,29 @@ _See the following sections for future possibilities_:
 
 ↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
-#### Why is `Self` type allowed in qualified paths?
+#### Why is `Self` type allowed in delegation paths?
 
-TODO: methods without receiver </br>
-TODO: example with `Iterator` and `UnordItems`
+We could limit delegation paths to `Trait::name` or `Type::name`, but this is not sufficient to express all delegation patterns. Consider a trait method without a receiver. In regular Rust code calling such a method requires specifying the particular implementation of the trait, for example:
+
+```rust
+trait Trait { fn foo(); }
+
+impl Trait for Inner { fn foo() {} }
+
+impl Trait for Outer {
+    fn foo() { Trait::foo(); } // ERROR
+}
+
+impl Trait for Outer {
+    fn foo() { <Inner as Trait>::foo(); }
+}
+```
+
+The path `Trait::foo` alone is insufficient because multiple implementations may provide the same method. Similarly, a delegation path may need to identify the implementation from which the delegated function is taken. Allowing `Self` makes this possible:
+
+```rust
+impl Trait for Outer { reuse <Inner as Trait>::foo; }
+```
 
 ↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
@@ -342,8 +362,6 @@ Work in this direction is already being explored. See [reflection project goal](
 ## Prior art
 [prior-art]: #prior-art
 
-TODO: add macro based crates
-
 TODO: consider what to write about extensions
 
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
@@ -431,7 +449,9 @@ TODO: `use` is one of the alternatives, check concerns from first proposal.
 ## Future possibilities
 [future-possibilities]: #future-possibilities
 
-TODO
+TODO: additional language extensions can be added later without affecting the core semantics
+
+TODO: the scope of possible extensions remains fairly limited.
 
 ### Name-based resolution as sugar
 
