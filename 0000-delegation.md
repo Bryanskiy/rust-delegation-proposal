@@ -22,8 +22,9 @@ The following terminology is frequently used in this proposal:
 
 The following conventions are used in this proposal:
 
-TODO: examples, implementation notes, links
-
+TODO: links to rational/external/other sections
+TODO: notes to implementation experience, other notes
+TODO: examples
 TODO: desugaring might be a subject of a change
 
 ## Motivation
@@ -63,6 +64,8 @@ pub(vis) use prefix::{a, b, c as d};
 pub(vis) reuse prefix::{a, b, c as d} { target_expr }
 ```
 
+TODO: example with min, ranges
+
 TODO
 
 ## Reference-level explanation
@@ -83,7 +86,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
 
 The delegation item has the form:
 ```diff
@@ -92,14 +95,14 @@ The delegation item has the form:
 +
 + DelegationPath →
 +     QualifiedPathType :: DelegationPathSegment
-+   | QualifiedPathType :: { ( , DelegationPathSegment )+ ,? }
++   | QualifiedPathType :: { ( DelegationPathSegment )+ ,? }
 +   | QualifiedPathType :: *
 +
 + DelegationPathSegment →
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-qualified-paths)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
+Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-qualified-paths)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
 
 > [!NOTE]
 >
@@ -162,7 +165,8 @@ TODO
 
 ### Design decisions outlined in this RFC
 
-- [Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?](#why-can-delegation-items-be-declared-in-any-position-and-why-are-qualified-paths-used-for-call-disambiguation)
+- [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
+- [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
 - [Why is `Self` type allowed in qualified paths?](#why-is-self-type-allowed-in-qualified-paths)
 - [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
 - [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
@@ -171,7 +175,7 @@ TODO
 - [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 - TODO:
 
-#### Why can delegation items be declared in any position and why are qualified paths used for call disambiguation?
+#### Why can delegation items be declared in any position?
 
 Delegation is fundamentally the forwarding of function calls. A regular function in Rust may be a trait method, a method in a trait implementation, an inherent method, or a free function. We can form different combinations based on the position of a caller and a callee:
 
@@ -184,7 +188,15 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
-Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
+In this proposal we support every combination rather than special-casing the most common ones, because the chosen name resolution scheme permits to resolve every kind of callee, and every combination lowers through the same desugaring scheme once the path is resolved.
+
+_See the following sections for rational/alternatives_:
+
+- [why are qualified paths used for call disambiguation?](#why-are-qualified-paths-used-for-call-disambiguation)
+
+#### why are qualified paths used for call disambiguation?
+
+__Note__: Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
 From the delegation's perspective the alternatives can be categorized as follows:
 
@@ -192,9 +204,7 @@ From the delegation's perspective the alternatives can be categorized as follows
 
     [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations since it can lead to ambiguities in a similar way to method calls.
 
-    > [!NOTE]
-    >
-    > One of the possibilities to infer the callee is to analyse target expression, i.e. the compiler would take the type of the expression(e.g. `typeof(expression)`) and then resolve the method by name. This approach raises open questions of its own: how ambiguities between multiple equally-named candidates would be resolved, and how broad a range of cases such inference could realistically support. For these reasons, it is left to a possible alternative reflection-based language feature [(?)](#reflection).
+    __Note:__ One of the possibilities to infer the callee is to analyse target expression, i.e. the compiler would take the type of the expression(e.g. `typeof(expression)`) and then resolve the method by name. This approach raises open questions of its own: how ambiguities between multiple equally-named candidates would be resolved, and how broad a range of cases such inference could realistically support. For these reasons, it is left to a possible alternative reflection-based language feature [(?)](#reflection).
 
 2. Resolve the callee from the fully qualified path.
 
@@ -205,11 +215,11 @@ From the delegation's perspective the alternatives can be categorized as follows
     One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach cannot distinguish between multiple generic implementations of the same trait.
 
 
-The second option has been chosen for this proposal. The primary reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
+The second option has been chosen for this proposal. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
 
-the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way. TODO: link to future work
+_See the following sections for future possibilities_:
 
-TODO: we have to answer both questions here
+- [name-based resolution as sugar](#name-based-resolution-as-sugar)
 
 #### Why is `Self` type allowed in qualified paths?
 
@@ -335,3 +345,7 @@ TODO: `use` is one of the alternatives, check concerns from first proposal.
 [future-possibilities]: #future-possibilities
 
 TODO
+
+### Name-based resolution as sugar
+
+A shorter syntax that infers the callee from a bare method name could be layered on top of fully qualified paths.
