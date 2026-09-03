@@ -9,7 +9,7 @@
 
 Provide a syntactic sugar to automatically forward function calls.
 
-### Terminology and conventions
+## Terminology and conventions
 
 The following terminology is frequently used in this proposal:
 
@@ -22,10 +22,11 @@ The following terminology is frequently used in this proposal:
 
 The following conventions are used in this proposal:
 
-TODO: links to rational/external/other sections
-TODO: notes to implementation experience, other notes
-TODO: examples
-TODO: desugaring might be a subject of a change
+TODO: links to rational/external/other sections </br>
+TODO: notes to implementation experience, other notes </br>
+TODO: examples </br>
+TODO: desugaring might be a subject of a change </br>
+TODO: note that doc format was taken from another rfc/create something else
 
 ## Motivation
 
@@ -102,6 +103,20 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
+A delegation item starts with the `reuse` keyword and consists of a [fully qualified path](#qualified-paths-and-name-resolution), optionally followed by a [target expression](#target-expression). It comes in three flavors, matching the three forms of `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation).
+
+_See the following sections for rationale/alternatives_:
+
+- [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
+- [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
+- [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
+
+_See the following sections for unresolved questions_:
+
+- [What keyword should be used?](#what-keyword-should-be-used)
+
+### Qualified paths and name resolution
+
 Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-qualified-paths)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
 
 > [!NOTE]
@@ -115,9 +130,15 @@ Qualified paths provide an unambiguous way to identify callable items, including
 >
 > TODO: continue
 
-TODO: Need a separate section/list of rules with target expression. When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
+_See the following sections for rationale/alternatives_:
 
-The delegation item comes in three flavors, matching the three forms of the `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation).
+- [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
+- [Why is `Self` type allowed in qualified paths?](#why-is-self-type-allowed-in-qualified-paths)
+- [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
+
+### Target expression
+
+TODO: When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
 
 ### Individual delegation
 
@@ -134,6 +155,11 @@ TODO
 callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
 
 TODO
+
+_See the following sections for rationale/alternatives_:
+
+- [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
+- [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 
 ### List delegation
 
@@ -164,16 +190,6 @@ TODO
 - TODO: we have some statistics and we can add it here
 
 ### Design decisions outlined in this RFC
-
-- [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
-- [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
-- [Why is `Self` type allowed in qualified paths?](#why-is-self-type-allowed-in-qualified-paths)
-- [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
-- [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
-- [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
-- [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
-- [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
-- TODO:
 
 #### Why can delegation items be declared in any position?
 
