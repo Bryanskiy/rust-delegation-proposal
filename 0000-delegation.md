@@ -106,7 +106,7 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a [fully qualified path](#qualified-paths-and-name-resolution), optionally followed by a [target expression](#target-expression). It comes in three flavors, matching the three forms of `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
+A delegation item starts with the `reuse` keyword and consists of a [fully qualified path](#qualified-paths-and-name-resolution), optionally followed by a [target expression](#target-expression). It comes in three flavors, matching the three forms of `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported))
 
 _See the following sections for rationale/alternatives_:
 
@@ -114,6 +114,7 @@ _See the following sections for rationale/alternatives_:
 - [Why is visibility manually added instead of being inherited from the callee?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)
 - [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
 - [Why is renaming supported?](#why-is-renaming-supported)
+- [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
 
 _See the following sections for unresolved questions_:
 
@@ -121,7 +122,7 @@ _See the following sections for unresolved questions_:
 
 ### Qualified paths and name resolution
 
-Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
+Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)).
 
 > [!NOTE]
 >
@@ -137,7 +138,6 @@ Qualified paths provide an unambiguous way to identify callable items, including
 _See the following sections for rationale/alternatives_:
 
 - [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
-- [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
 
 ### Target expression
 
@@ -309,13 +309,13 @@ impl<T> Trait<T> for Outer {
 The path `Trait::foo` alone is insufficient because multiple implementations may provide the same method. The same principle applies to delegation:
 
 ```rust
-impl<T> Trait<T> for Outer { reuse Trait::foo; } // ERROR
+impl<T> Trait<T> for Outer { reuse Trait::foo { self.0 } } // ERROR
 ```
 
 Allowing generic arguments in delegation paths makes this possible:
 
 ```rust
-impl<T> Trait<T> for Outer { reuse Trait::<()>::foo; } // OK
+impl<T> Trait<T> for Outer { reuse Trait::<()>::foo { self.0 } } // OK
 ```
 
 Together, these cases motivate a general guiding principle: to support the full range of existing Rust path syntax that is useful for identifying a callee, rather than introducing special-case restrictions for delegation. As long as the syntax remains within the proposal's syntax budget, there is no reason to impose a narrower subset.
@@ -397,15 +397,15 @@ TODO: find github issue
 
 ### Alternatives to this RFC
 
-#### Go lang
-
 #### Macros
 
 See Prior art for a closer look at the two most widely used crates for this, delegate and ambassador. Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However: TODO
 
 #### Inheritance
 
-TODO
+Rust could instead adopt some form of inheritance closer to what object-oriented languages provide. However, inheritance has been discussed extensively in the context of Rust, and it is generally not considered aligned with the language's design philosophy. This proposal therefore does not explore inheritance further.
+
+TODO: add links
 
 #### Reflection
 
@@ -418,7 +418,7 @@ Work in this direction is already being explored. See [reflection project goal](
 ## Prior art
 [prior-art]: #prior-art
 
-TODO: consider what to write about extensions
+### Go lang
 
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
@@ -479,9 +479,7 @@ TODO: this is not delegation, but the use case can be covered by delegation.
 
 ### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024, merged)
 
-This RFC allows a use declaration to bring a trait's associated function into scope by path, e.g. `use SomeTrait::some_fn;`.
-
-TODO: this is not delegation, but the use case can be covered by delegation.
+This RFC allows a use declaration to bring a trait's associated function into scope by path, e.g. `use SomeTrait::some_fn;`. This is not delegation: `use Trait::func` creates a local name for an existing associated function and does not define a new item. However, the same use case can be expressed through delegation feature.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
@@ -505,9 +503,7 @@ TODO: `use` is one of the alternatives, check concerns from first proposal.
 ## Future possibilities
 [future-possibilities]: #future-possibilities
 
-TODO: additional language extensions can be added later without affecting the core semantics
-
-TODO: the scope of possible extensions remains fairly limited.
+Several extensions could be added on top of the core feature without changing its fundamental semantics. At the same time, the scope for such extensions is relatively limited, and they would primarily provide syntactic conveniences rather than introduce fundamentally new functionality.
 
 ### Name-based resolution as sugar
 
