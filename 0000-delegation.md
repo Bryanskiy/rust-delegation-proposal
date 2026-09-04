@@ -49,28 +49,12 @@ impl<T: Hash, A: Allocator + Clone> Hash for BTreeSet<T, A> {
 
 The implementation does not introduce new behavior. It simply forwards a method call to a field. In practice the required repetition may even discourage the use of newtypes despite their advantages for type safety and abstraction. This situation highlights a gap in Rust’s ergonomics. While Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
-This limitation has long been recognized by the Rust community. TODO: link to prior work
-
-This proposal revisits delegation.
+This limitation has long been recognized by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), a multiple discussions, and several macro crates ([delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador) are most popular amongst them). See [Prior art](#prior-art) for a full discussion of these efforts. This proposal revisits delegation.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Delegation items resemble `use` declarations.
-
-```rust
-// Import
-#[attrs]
-pub(vis) use prefix::{a, b, c as d};
-
-// Delegation item
-#[attrs]
-pub(vis) reuse prefix::{a, b, c as d} { target_expr }
-```
-
-TODO: example with min, ranges
-
-TODO
+TODO: Take one particular use case(e.g. `Iterator`/`Stack`) and demonstrated all the concepts on this particular example by gradually increasing complexity.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -431,7 +415,11 @@ Work in this direction is already being explored. See [reflection project goal](
 ## Prior art
 [prior-art]: #prior-art
 
+TODO: other langs
+
 ### Go lang
+
+Go has no inheritance either, and addresses the same problem through struct embedding. A struct field declared with only a type, no name, is _embedded_.
 
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
@@ -471,7 +459,7 @@ __Strengths__:
 
 __Weaknesses__:
 
-- Every delegated method's signature must be restated by hand in the macro definition.
+- Declarative macros like has no access to the callee's actual signature. Every delegated method's signature must be restated by hand in the macro definition.
 
 
 ### [crates.io/ambassador](http://crates.io/crates/ambassador)
@@ -487,6 +475,8 @@ __Weaknesses__:
 TODO:
 
 ### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018)
+
+This RFC proposed an `#[inherent]` attribute that would let a trait implementation's methods be called without importing the trait.
 
 TODO: this is not delegation, but the use case can be covered by delegation.
 
