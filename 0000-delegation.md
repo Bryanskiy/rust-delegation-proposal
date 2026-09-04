@@ -90,7 +90,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
+Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
 
 The delegation item has the form:
 ```diff
@@ -106,13 +106,14 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a [fully qualified path](#qualified-paths-and-name-resolution), optionally followed by a [target expression](#target-expression). It comes in three flavors, matching the three forms of `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation).
+A delegation item starts with the `reuse` keyword and consists of a [fully qualified path](#qualified-paths-and-name-resolution), optionally followed by a [target expression](#target-expression). It comes in three flavors, matching the three forms of `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
 _See the following sections for rationale/alternatives_:
 
 - [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
-- [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
+- [Why is visibility manually added instead of being inherited from the callee?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)
 - [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
+- [Why is renaming supported?](#why-is-renaming-supported)
 
 _See the following sections for unresolved questions_:
 
@@ -120,7 +121,7 @@ _See the following sections for unresolved questions_:
 
 ### Qualified paths and name resolution
 
-Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation), [?](#why-is-self-type-allowed-in-delegation-paths)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
+Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
 
 > [!NOTE]
 >
@@ -135,8 +136,7 @@ Qualified paths provide an unambiguous way to identify callable items, including
 
 _See the following sections for rationale/alternatives_:
 
-- [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
-- [Why is `Self` type allowed in delegation paths?](#why-is-self-type-allowed-in-delegation-paths)
+- [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
 - [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
 
 ### Target expression
@@ -207,15 +207,15 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
-In this proposal we support every combination rather than special-casing the most common ones, because the chosen name resolution scheme permits to resolve every kind of callee.
+For the callee resolution to any variant is permitted as established in the name resolution section ([?]((#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view))). For the caller we see no reason to restrict it as long as it fits within the general desugaring scheme and is likely to be encountered in practice. Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
 
 _See the following sections for rational/alternatives_:
 
-- [why are qualified paths used for call disambiguation?](#why-are-qualified-paths-used-for-call-disambiguation)
+- [why are qualified paths used for call disambiguation?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
 
 ↩ [reference-level explanation](#reference-level-explanation)
 
-#### why are qualified paths used for call disambiguation?
+#### why are qualified paths used for call disambiguation? Part 1: high-level view.
 
 __Note__: Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
@@ -240,7 +240,7 @@ The second option has been chosen for this proposal. The first reason is that fu
 
 _See the following sections for rationale/alternatives_:
 
-- [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
+[why are qualified paths used for call disambiguation? Part 2.](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)
 
 _See the following sections for future possibilities_:
 
@@ -248,7 +248,7 @@ _See the following sections for future possibilities_:
 
 ↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
-#### Why is `Self` type allowed in delegation paths?
+#### why are qualified paths used for call disambiguation? Part 2: `Self` type.
 
 We could limit delegation paths to `Trait::name` or `Type::name`, but this is not sufficient to express all delegation patterns. Consider a trait method without a receiver. In regular Rust code calling such a method requires specifying the particular implementation of the trait, for example:
 
@@ -262,19 +262,28 @@ impl Trait for Outer {
 }
 
 impl Trait for Outer {
-    fn foo() { <Inner as Trait>::foo(); }
+    fn foo() { <Inner as Trait>::foo(); } // OK
 }
 ```
 
-The path `Trait::foo` alone is insufficient because multiple implementations may provide the same method. Similarly, a delegation path may need to identify the implementation from which the delegated function is taken. Allowing `Self` makes this possible:
+The path `Trait::foo` alone is insufficient because multiple implementations may provide the same method. A delegation path may need to identify the callee in the same may. Allowing `Self` makes this possible:
 
 ```rust
-impl Trait for Outer { reuse <Inner as Trait>::foo; }
+impl Trait for Outer { reuse Trait::foo; } // ERROR
+impl Trait for Outer { reuse <Inner as Trait>::foo; } // OK
 ```
+
+TODO: part 3
 
 ↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
-#### Why may delegation items be annotated with a visibility modifier?
+#### Why are generic arguments allowed in delegation paths?
+
+We could limit delegation paths to `Trait::name`, `Type::name` and `<Type as Trait>::name`, but this is not sufficient to express all delegation patterns.
+
+↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
+
+#### Why is visibility manually added instead of being inherited from the callee?
 
 The ability to specify a reused function's visibility independently of the original's is a welcome flexibility, yet it introduces a potential semver hazard:
 
@@ -313,6 +322,12 @@ TODO: default attributes that should be inherited. There should be a posibility 
 
 ↩ [reference-level explanation](#reference-level-explanation)
 
+#### Why is renaming supported?
+
+The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support renaming.
+
+↩ [reference-level explanation](#reference-level-explanation)
+
 #### Why is delegation of types and constants not supported?
 
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
@@ -343,9 +358,11 @@ TODO: find github issue
 
 ### Alternatives to this RFC
 
-TODO: check Go lang
+#### Go lang
 
-TODO: macros with link to prior art
+#### Macros
+
+See Prior art for a closer look at the two most widely used crates for this, delegate and ambassador. Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However: TODO
 
 #### Inheritance
 
@@ -436,7 +453,7 @@ The questions below are not expected to block acceptance of this RFC. Each is ei
 
 TODO:
 
-↩ [Why may delegation items be annotated with a visibility modifier?](#why-may-delegation-items-be-annotated-with-a-visibility-modifier)
+↩ [Why is visibility manually added instead of being inherited from the callee?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)
 
 ### What keyword should be used?
 
