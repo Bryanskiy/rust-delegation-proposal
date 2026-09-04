@@ -106,19 +106,25 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a [fully qualified path](#qualified-paths-and-name-resolution), optionally followed by a [target expression](#target-expression). It comes in three flavors, matching the three forms of `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) and [glob delegation](#glob-delegation). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported))
+A delegation item starts with the `reuse` keyword and consists of a [fully qualified path](#qualified-paths-and-name-resolution), optionally followed by a [target expression](#target-expression). It comes in three flavors, matching the three forms of `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) ([?](#why-is-list-delegation-supported)) and [glob delegation](#glob-delegation) ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported))
 
 _See the following sections for rationale/alternatives_:
 
 - [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
 - [Why is visibility manually added instead of being inherited from the callee?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)
 - [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
+- [Why is list delegation supported?](#why-is-list-delegation-supported)
+- [Why is glob delegation supported?](#why-is-glob-delegation-supported)
 - [Why is renaming supported?](#why-is-renaming-supported)
 - [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
 
 _See the following sections for unresolved questions_:
 
 - [What keyword should be used?](#what-keyword-should-be-used)
+
+_See the following sections for future possibilities_:
+
+- [Support delegating types and consts as part of glob delegation](#support-delegating-types-and-consts-as-part-of-glob-delegation)
 
 ### Qualified paths and name resolution
 
@@ -361,9 +367,27 @@ TODO: The compiler may automatically add some attributes to a function whenever 
 
 ↩ [reference-level explanation](#reference-level-explanation)
 
+#### Why is list delegation supported?
+
+The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support lists.
+
+TODO: links
+
+↩ [reference-level explanation](#reference-level-explanation)
+
+#### Why is glob delegation supported?
+
+The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support globs.
+
+TODO: links
+
+↩ [reference-level explanation](#reference-level-explanation)
+
 #### Why is renaming supported?
 
 The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support renaming.
+
+TODO: links
 
 ↩ [reference-level explanation](#reference-level-explanation)
 
@@ -371,7 +395,11 @@ The syntax cost of supporting it is negligible compared with the benefit. Some f
 
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
 
-TODO: alternatives
+_See the following sections for future possibilities_:
+
+- [Support delegating types and consts as part of glob delegation](#support-delegating-types-and-consts-as-part-of-glob-delegation)
+
+↩ [reference-level explanation](#reference-level-explanation)
 
 #### Why are function qualifiers inherited unchanged from the callee?
 
@@ -508,3 +536,11 @@ Several extensions could be added on top of the core feature without changing it
 ### Name-based resolution as sugar
 
 A shorter syntax that infers the callee from a bare method name could be layered on top of fully qualified paths.
+
+↩ [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
+
+### Support delegating types and consts as part of glob delegation
+
+Glob delegation could still support delegation of types and constants because it does not specify individual names.
+
+↩ [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
