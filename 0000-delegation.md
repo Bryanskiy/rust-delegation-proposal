@@ -188,7 +188,7 @@ TODO
 [drawbacks]: #drawbacks
 
 1. __Coverage__: Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
-2. __Potential redundancy__: The delegation feature could be implemented entirely via compile‑time reflection [(?)](#reflection) (if and when that becomes available).
+2. __Potential redundancy__: The delegation feature could potentially be implemented as third-partly library with compile‑time reflection [(?)](#reflection) (if and when that becomes available).
 3. __Increased language complexity__: duh
 
 ## Rationale and alternatives
@@ -332,22 +332,7 @@ TODO: part 4 - type bindings
 
 #### Why is visibility manually added instead of being inherited from the callee?
 
-The ability to specify a reused function's visibility independently of the original's is a welcome flexibility, yet it introduces a potential semver hazard:
-
-```rust
-fn foo<T: Copy>(x: T) { /* impl */ }
-pub reuse foo as bar;
-```
-
-If the signature of `foo` changes, the generated function `bar` changes accordingly. In regular Rust code, such a signature change would cause a type error at every call site, forcing the author to update callers. With `reuse`, however, the change propagates silently. As a result, modifications intended to be internal may accidentally become breaking changes for downstream crates.
-
-Taking this into consideration, several design choices are possible:
-
-1. The visibility of the generated function is taken solely from the callee.
-2.  The visibility of the generated function cannot exceed the visibility of the reused function. In other words, delegation may only preserve or reduce visibility, never increase it.
-3. Explicit visibility control by the user.
-
-We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee. The visibility handling can be refined prior to stabilization based on experience and feedback and does not block this proposal.
+Delegation item is a distinct item that may deliberately want different behavior than its callee.
 
 _See the following sections for unresolved questions_:
 
@@ -359,11 +344,9 @@ _See the following sections for unresolved questions_:
 
 Attributes may affect diagnostics, linking, documentation, or the item's public API contract. Delegation item is a distinct item that may deliberately want different behavior than its callee. Auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
-TODO: The compiler may automatically add some attributes to a function whenever doing so doesn't change observable behavior. Specify list of default attributes? Need a posibility to opt out.
+_See the following sections for unresolved questions_:
 
-> [!NOTE]
->
-> The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
+- [Which attributes should be added by default?](which-attributes-should-be-added-by-default)
 
 ↩ [reference-level explanation](#reference-level-explanation)
 
@@ -486,7 +469,7 @@ __Strengths__:
 
 __Weaknesses__:
 
-TODO:
+- Every delegated method's signature must be restated by hand in the macro definition.
 
 
 ### [crates.io/ambassador](http://crates.io/crates/ambassador)
@@ -514,9 +497,30 @@ This RFC allows a use declaration to bring a trait's associated function into sc
 
 The questions below are not expected to block acceptance of this RFC. Each is either a refinement that can be settled during implementation or before stabilization.
 
+### Which attributes should be added by default?
+
+Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
+
+↩ [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
+
 ### Should the visibility of the delegation item be restricted?
 
-TODO:
+The ability to specify a reused function's visibility independently of the original's is a welcome flexibility, yet it introduces a potential semver hazard:
+
+```rust
+fn foo<T: Copy>(x: T) { /* impl */ }
+pub reuse foo as bar;
+```
+
+If the signature of `foo` changes, the generated function `bar` changes accordingly. In regular Rust code, such a signature change would cause a type error at every call site, forcing the author to update callers. With `reuse`, however, the change propagates silently. As a result, modifications intended to be internal may accidentally become breaking changes for downstream crates.
+
+Taking this into consideration, several design choices are possible:
+
+1. The visibility of the generated function is taken solely from the callee.
+2.  The visibility of the generated function cannot exceed the visibility of the reused function. In other words, delegation may only preserve or reduce visibility, never increase it.
+3. Explicit visibility control by the user.
+
+We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee.
 
 ↩ [Why is visibility manually added instead of being inherited from the callee?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)
 
