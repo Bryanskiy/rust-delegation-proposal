@@ -240,7 +240,7 @@ The second option has been chosen for this proposal. The first reason is that fu
 
 _See the following sections for rationale/alternatives_:
 
-[why are qualified paths used for call disambiguation? Part 2.](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)
+- [why are qualified paths used for call disambiguation? Part 2.](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)
 
 _See the following sections for future possibilities_:
 
@@ -248,7 +248,7 @@ _See the following sections for future possibilities_:
 
 ↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
-#### why are qualified paths used for call disambiguation? Part 2: `Self` type.
+#### Why are qualified paths used for call disambiguation? Part 2: `Self` type.
 
 We could limit delegation paths to `Trait::name` or `Type::name`, but this is not sufficient to express all delegation patterns. Consider a trait method without a receiver. In regular Rust code calling such a method requires specifying the particular implementation of the trait, for example:
 
@@ -266,20 +266,61 @@ impl Trait for Outer {
 }
 ```
 
-The path `Trait::foo` alone is insufficient because multiple implementations may provide the same method. A delegation path may need to identify the callee in the same may. Allowing `Self` makes this possible:
+The path `Trait::foo` alone is insufficient because multiple implementations may provide the same method. The same principle applies to delegation:
 
 ```rust
 impl Trait for Outer { reuse Trait::foo; } // ERROR
+```
+
+Allowing `Self` in delegation paths makes this possible:
+
+```rust
 impl Trait for Outer { reuse <Inner as Trait>::foo; } // OK
 ```
 
-TODO: part 3
+Therefore, delegation paths should permit `Self` type for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee.
+
+_See the following sections for rationale/alternatives_:
+
+- [why are qualified paths used for call disambiguation? Part 3.](#why-are-qualified-paths-used-for-call-disambiguation-part-3-generic-arguments)
 
 ↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
-#### Why are generic arguments allowed in delegation paths?
+#### Why are qualified paths used for call disambiguation? Part 3: generic arguments.
 
-We could limit delegation paths to `Trait::name`, `Type::name` and `<Type as Trait>::name`, but this is not sufficient to express all delegation patterns.
+We could limit delegation paths to `Trait::name`, `Type::name` and `<Type as Trait>::name`, but this is not sufficient to express all delegation patterns. Consider a multiple implementations of the same trait with generic parameters. Rust code calling a method of such trait requires specifying the particular generic arguments, for example:
+
+```rust
+trait Trait<T> { fn foo(&self) {} }
+
+impl Trait<i32> for Inner { fn foo(&self) {} }
+
+impl Trait<()> for Inner { fn foo(&self) {} }
+
+impl<T> Trait<T> for Outer {
+    fn foo() { Trait::foo(); } // ERROR
+}
+
+impl<T> Trait<T> for Outer {
+    fn foo(&self) { Trait::<()>::foo(&self.0) } // OK
+}
+```
+
+The path `Trait::foo` alone is insufficient because multiple implementations may provide the same method. The same principle applies to delegation:
+
+```rust
+impl<T> Trait<T> for Outer { reuse Trait::foo; } // ERROR
+```
+
+Allowing generic arguments in delegation paths makes this possible:
+
+```rust
+impl<T> Trait<T> for Outer { reuse Trait::<()>::foo; } // OK
+```
+
+Together, these cases motivate a general guiding principle: to support the full range of existing Rust path syntax that is useful for identifying a callee, rather than introducing special-case restrictions for delegation. As long as the syntax remains within the proposal's syntax budget, there is no reason to impose a narrower subset.
+
+TODO: part 4 - type bindings
 
 ↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
@@ -310,15 +351,13 @@ _See the following sections for unresolved questions_:
 
 #### Why are attributes manually added instead of being inherited from the callee?
 
-Delegation item is a distinct item that may deliberately want different behavior than its callee.
+Attributes may affect diagnostics, linking, documentation, or the item's public API contract. Delegation item is a distinct item that may deliberately want different behavior than its callee. Auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
-Attributes may affect diagnostics, linking, documentation, or the item's public API contract and auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
-
-TODO: default attributes that should be inherited. There should be a posibility to opt out.
+TODO: The compiler may automatically add some attributes to a function whenever doing so doesn't change observable behavior. Specify list of default attributes? Need a posibility to opt out.
 
 > [!NOTE]
 >
-> The compiler may automatically add some attributes to a function whenever doing so doesn't change observable behavior. For instance, the current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
+> The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
 
 ↩ [reference-level explanation](#reference-level-explanation)
 
@@ -344,9 +383,9 @@ The function header comprises qualifiers such as `const`, `async`, `unsafe`, `ex
 - If the callee is `unsafe`, the generated function is also `unsafe`. Delegation merely forwards the call and cannot verify the safety contract required by the callee. Therefore, the same safety obligations must be imposed on caller. <br>
 - The generated function inherits the same ABI. <br>
 
-Programmer who wants a different behavior can still write a wrapper by hand.
-
 One further consequence worth noting: because a delegation item's ABI, `unsafe`-ness, and `async`-ness are always identical to the callee's, a delegation item can be coerced to a function pointer or passed anywhere the callee itself could be.
+
+TODO: attributes and vis are specified manually while these are inherited. Why? Programmer who wants a different behavior can still write a wrapper by hand.
 
 ↩ [individual delegation](#individual-delegation)
 
