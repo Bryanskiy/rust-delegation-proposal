@@ -120,6 +120,8 @@ _See the following sections for rationale/alternatives_:
 
 _See the following sections for unresolved questions_:
 
+- [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
+- [Which attributes should be added by default?](which-attributes-should-be-added-by-default)
 - [What keyword should be used?](#what-keyword-should-be-used)
 
 _See the following sections for future possibilities_:
@@ -239,7 +241,7 @@ From the delegation's perspective the alternatives can be categorized as follows
 
 3. Use keywords as disambiguators.
 
-    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach doesn't generalize well to generic contexts. For example, it cannot distinguish between multiple generic implementations of the same trait.
+    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach doesn't generalize well to generic contexts. For example, it cannot distinguish between multiple generic implementations of the same trait. Also see next parts ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)).
 
 
 The second option has been chosen for this proposal. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
@@ -332,7 +334,7 @@ TODO: part 4 - type bindings
 
 #### Why is visibility manually added instead of being inherited from the callee?
 
-Delegation item is a distinct item that may deliberately want different behavior than its callee.
+Delegation item is a distinct item that may deliberately want different behavior than its callee. This also avoids ambiguity for users about whether omitting a visibility modifier makes the delegation item private or causes it to inherit the callee's visibility.
 
 _See the following sections for unresolved questions_:
 
@@ -389,10 +391,10 @@ _See the following sections for future possibilities_:
 
 The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`.
 
-- If the callee is a const function, the generated function is also `const`. This is necessary for the delegation to be usable in const contexts. <br>
-- If the callee is `async`, the generated function is also `async`. This is necessary for the delegation to be usable in async contexts. <br>
-- If the callee is `unsafe`, the generated function is also `unsafe`. Delegation merely forwards the call and cannot verify the safety contract required by the callee. Therefore, the same safety obligations must be imposed on caller. <br>
-- The generated function inherits the same ABI. <br>
+- If the callee is a const function, the generated function is also `const`. This is necessary for the delegation to be usable in const contexts.
+- If the callee is `async`, the generated function is also `async`. This is necessary for the delegation to be usable in async contexts.
+- If the callee is `unsafe`, the generated function is also `unsafe`. Delegation merely forwards the call and cannot verify the safety contract required by the callee. Therefore, the same safety obligations must be imposed on caller.
+- The generated function inherits the same ABI. TODO: explanation.
 
 One further consequence worth noting: because a delegation item's ABI, `unsafe`-ness, and `async`-ness are always identical to the callee's, a delegation item can be coerced to a function pointer or passed anywhere the callee itself could be.
 
