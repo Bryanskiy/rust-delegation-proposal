@@ -9,9 +9,7 @@
 
 Provide a syntactic sugar to automatically forward function calls.
 
-This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
-
-## Terminology and conventions
+## Terminology
 
 The following terminology is frequently used in this proposal:
 
@@ -20,15 +18,16 @@ The following terminology is frequently used in this proposal:
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
 - _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
 - _desugaring_ - the translation from a delegation item into regular function calls.
-- _delegation pattern_ -
-- TODO
+- _delegation pattern_ - TODO
 
-The following conventions are used in this proposal:
+## Conventions
+
+This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
+
 
 TODO: links to rational/external/other sections </br>
 TODO: notes to implementation experience, other notes </br>
 TODO: examples </br>
-TODO: desugaring might be a subject of a change </br>
 TODO: note that doc format was taken from another rfc/create something else
 
 ## Motivation
@@ -54,7 +53,49 @@ This limitation has long been recognized by the Rust community: it has motivated
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-TODO: Take one particular use case(e.g. `Iterator`/`Stack`) and demonstrated all the concepts on this particular example by gradually increasing complexity.
+TODO: continue developing example with `Stack` with more advanced features.
+
+TODO: add `Iterator` examples
+
+Suppose you're writing a `Stack<T>` type as a wrapper around `Vec<T>`.
+
+```rust
+pub struct Stack<T> {
+    items: Vec<T>,
+}
+```
+
+A `Vec` already has almost everything a stack needs. Rather than writing:
+
+```rust
+impl<T> Stack<T> {
+    pub fn push(&mut self, item: T) {
+        self.items.push(item)
+    }
+}
+```
+
+you can write:
+
+```rust
+impl<T> Stack<T> {
+    reuse Vec::push { self.items }
+}
+```
+
+`reuse` item is a delegation item. `Vec::push` is the callee, and `{ self.items }` is the target expression: a small block who replaces the callee's first argument.
+
+### Delegating several methods at once
+
+Listing out `push`, `pop`, `len`, and `is_empty` as four separate reuse items is still four lines whose only real difference is the method name. List delegation collapses them into one:
+
+```rust
+impl<T> Stack<T> {
+    reuse Vec::{push, pop, len, is_empty} { self.items }
+}
+```
+
+Each generated method gets the receiver its callee needs, not a receiver you have to spell out yourself: `push` and `pop` need to mutate the `Vec`, so the methods this generates take `&mut self`, while `len` and `is_empty` only need to read it, so those take plain `&self`.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -90,7 +131,7 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a [fully qualified path](#qualified-paths-and-name-resolution), optionally followed by a [target expression](#target-expression). It comes in three flavors, matching the three forms of `DelegationPath`: [individual delegation](#individual-delegation), [list delegation](#list-delegation) ([?](#why-is-list-delegation-supported)) and [glob delegation](#glob-delegation) ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported))
+A delegation item starts with the `reuse` keyword and consists of a fully qualified path, optionally followed by a target expression. It comes in three flavors, matching the three forms of `DelegationPath`: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported))
 
 _See the following sections for rationale/alternatives_:
 
@@ -518,9 +559,7 @@ We prefer to leave all control to the user while also adding a deny-by-default l
 
 ### What keyword should be used?
 
-The draft uses `reuse`, but other options like `delegate` or `forward` could be considered. The keyword should not conflict with existing identifiers and should be intuitive.
-
-TODO: `use` is one of the alternatives, check concerns from first proposal.
+The draft uses `reuse`, but other options like `delegate` or `forward` could be considered.
 
 ↩ [reference-level explanation](#reference-level-explanation)
 
