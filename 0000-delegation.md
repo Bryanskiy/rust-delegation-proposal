@@ -48,54 +48,60 @@ impl<T: Hash, A: Allocator + Clone> Hash for BTreeSet<T, A> {
 
 The implementation does not introduce new behavior. It simply forwards a method call to a field. In practice the required repetition may even discourage the use of newtypes despite their advantages for type safety and abstraction. This situation highlights a gap in Rust’s ergonomics. While Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
-This limitation has long been recognized by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), a multiple discussions, and several macro crates ([delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador) are most popular amongst them). See [Prior art](#prior-art) for a full discussion of these efforts. This proposal revisits delegation.
+This limitation has long been recognized by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), a multiple discussions, and several macro crates ([delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador) are most popular amongst them). See [Prior art](#prior-art) for a full discussion of these efforts.
+
+This proposal revisits delegation.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-TODO: continue developing example with `Stack` with more advanced features.
+TODO: continue developing example with with more advanced features.
 
-TODO: add `Iterator` examples
-
-Suppose you're writing a `Stack<T>` type as a wrapper around `Vec<T>`.
+Suppose you're writing a `BTreeSet<T>` type as a wrapper around `BTreeMap<T, ()>` which is, incidentally, close to how the standard library's own `BTreeSet` is actually built (real `BTreeSet` also carries an allocator parameter, elided here for simplicity).
 
 ```rust
-pub struct Stack<T> {
-    items: Vec<T>,
+pub struct BTreeSet<T> {
+    map: BTreeMap<T, ()>,
 }
 ```
 
-A `Vec` already has almost everything a stack needs. Rather than writing:
+The [motivation](#motivation) section already showed how the standard library forwards `Hash` by hand. With a delegation, the same implementation is:
 
 ```rust
-impl<T> Stack<T> {
-    pub fn push(&mut self, item: T) {
-        self.items.push(item)
-    }
+impl<T: Hash> Hash for BTreeSet<T> {
+    reuse Hash::hash { self.map }
 }
 ```
 
-you can write:
+`reuse` item is a new delegation item. `Hash::hash` is the callee, and `{ self.map }` is the target expression: a small block which replaces the callee's first argument.
+
+TODO: The compiler needs an explicit hint such as `Hash::hash` rather than just `hash`, because callee might differ. Check `Default` trait impl.
+
+### Inherent methods
+
+TODO: example with `contains_key` without renaming. Demonstrate how generics and predicates are inherited
+
+### Renaming a delegated method
+
+Sometimes the callee's name isn't the name you want on your own type.
 
 ```rust
-impl<T> Stack<T> {
-    reuse Vec::push { self.items }
+impl<T> BTreeSet<T> {
+    reuse BTreeMap::<T, ()>::contains_key as contains { self.map }
 }
 ```
-
-`reuse` item is a delegation item. `Vec::push` is the callee, and `{ self.items }` is the target expression: a small block who replaces the callee's first argument.
 
 ### Delegating several methods at once
 
-Listing out `push`, `pop`, `len`, and `is_empty` as four separate reuse items is still four lines whose only real difference is the method name. List delegation collapses them into one:
+Listing out `is_empty`, `clear` and `len` as three separate reuse items is still three lines whose only real difference is the method name. List delegation collapses them into one:
 
 ```rust
-impl<T> Stack<T> {
-    reuse Vec::{push, pop, len, is_empty} { self.items }
+impl<T> BTreeSet<T> {
+    reuse BTreeMap<T, ()>::{len, is_empty, clear, capacity} { self.map }
 }
 ```
 
-Each generated method gets the receiver its callee needs, not a receiver you have to spell out yourself: `push` and `pop` need to mutate the `Vec`, so the methods this generates take `&mut self`, while `len` and `is_empty` only need to read it, so those take plain `&self`.
+Each generated method gets the receiver its callee needs, not a receiver you have to spell out yourself: `clear` needs to mutate the map, so the method this generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take plain `&self`. The target expression `{ self.map }` is the same in all four cases.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -437,7 +443,14 @@ TODO: find github issue
 
 #### Macros
 
-See Prior art for a closer look at the two most widely used crates for this, delegate and ambassador. Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However: TODO
+See Prior art for a closer look at the two most widely used crates for this, delegate and ambassador. Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see.
+
+TODO
+
+Closing this gap fully would require the macro to see type information during expansion, which is exactly the reflection capability discussed as an alternative below.
+
+_See the following sections for rationale/alternatives_:
+- [reflection](#Reflection)
 
 #### Inheritance
 
@@ -457,6 +470,12 @@ Work in this direction is already being explored. See [reflection project goal](
 [prior-art]: #prior-art
 
 TODO: other langs
+
+#### Kotlin
+
+Kotlin supports interface delegation natively via a `by` clause on the supertype list: `class Derived(b: Base) : Base by b` implements `Base` for `Derived` by forwarding every one of its methods to `b`. It is close in spirit to this proposal's glob delegation.
+
+TODO: links
 
 ### Go lang
 
