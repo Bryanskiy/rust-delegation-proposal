@@ -77,19 +77,29 @@ impl<T: Hash> Hash for BTreeSet<T> {
 
 TODO: The compiler needs an explicit hint such as `Hash::hash` rather than just `hash`, because callee might differ. Check `Default` trait impl.
 
-### Inherent methods
+### Other parent context
 
-TODO: example with `contains_key` without renaming. Demonstrate how generics and predicates are inherited
+Delegation isn't limited to trait methods. `BTreeMap` implements `contains_key` as an inherent method, and reuse can forward it just as easily:
+
+```rust
+impl<T: Ord> BTreeSet<T> {
+    reuse BTreeMap::<T, ()>::contains_key { self.map }
+}
+```
+
+TODO: continue
 
 ### Renaming a delegated method
 
-Sometimes the callee's name isn't the name you want on your own type.
+Sometimes the callee's name isn't the name you want on your own type. `contains_key` reads naturally on a map, but for a set `contains` is clearer. Adding `as new_name` after the callee renames the generated method:
 
 ```rust
 impl<T> BTreeSet<T> {
     reuse BTreeMap::<T, ()>::contains_key as contains { self.map }
 }
 ```
+
+The method this adds to `BTreeSet<T>` is called `contains`, not `contains_key` without changing anything else about the delegation.
 
 ### Delegating several methods at once
 
@@ -101,7 +111,7 @@ impl<T> BTreeSet<T> {
 }
 ```
 
-Each generated method gets the receiver its callee needs, not a receiver you have to spell out yourself: `clear` needs to mutate the map, so the method this generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take plain `&self`. The target expression `{ self.map }` is the same in all four cases.
+Each generated method gets the receiver its callee needs, not a receiver you have to spell out yourself: `clear` needs to mutate the map, so the method this generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all four cases.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -137,7 +147,7 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a fully qualified path, optionally followed by a target expression. It comes in three flavors, matching the three forms of `DelegationPath`: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported))
+A delegation item starts with the `reuse` keyword and consists of a fully qualified path, followed by an optional block expression. It comes in three flavors, matching the three forms of `DelegationPath`: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported))
 
 _See the following sections for rationale/alternatives_:
 
@@ -152,7 +162,7 @@ _See the following sections for rationale/alternatives_:
 _See the following sections for unresolved questions_:
 
 - [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
-- [Which attributes should be added by default?](which-attributes-should-be-added-by-default)
+- [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
 - [What keyword should be used?](#what-keyword-should-be-used)
 
 _See the following sections for future possibilities_:
@@ -174,13 +184,26 @@ Qualified paths provide an unambiguous way to identify callable items, including
 >
 > TODO: continue
 
+TODO: say from whom signature is inherited. For trait impl ... For others ...
+
 _See the following sections for rationale/alternatives_:
 
 - [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
 
 ### Target expression
 
+The target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
+
+When no block is given the first argument is passed through unchanged. ([?](#why-is-the-block-expression-optional-in-the-target-expression)).
+
+Inside that block, `self` refers to TODO
+
 TODO: When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
+
+_See the following sections for rational/alternatives:_
+
+- [Why is the target expression a block expression?](#why-is-the-target-expression-a-block-expression)
+- [Why is the block expression optional in the target expression?](#why-is-the-block-expression-optional-in-the-target-expression)
 
 ### Individual delegation
 
@@ -221,7 +244,7 @@ TODO
 [drawbacks]: #drawbacks
 
 1. __Coverage__: Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
-2. __Potential redundancy__: The delegation feature could potentially be implemented as third-partly library with compile‑time reflection [(?)](#reflection) (if and when that becomes available).
+2. __Potential redundancy__: The delegation feature could potentially be implemented as third-partly library with compile‑time [reflection](#reflection) (if and when that becomes available).
 3. __Increased language complexity__: duh
 
 ## Rationale and alternatives
@@ -433,6 +456,18 @@ TODO: attributes and vis are specified manually while these are inherited. Why? 
 
 ↩ [individual delegation](#individual-delegation)
 
+#### Why is the target expression a block expression?
+
+TODO
+
+↩ [traget expression](#target-expression)
+
+#### Why is the block expression optional in the target expression?
+
+TODO: The `;` form is effectively an alias for `{ self }`.
+
+↩ [traget expression](#target-expression)
+
 #### Why is delegation of variadic functions not supported?
 
 TODO: find github issue
@@ -452,9 +487,13 @@ Closing this gap fully would require the macro to see type information during ex
 _See the following sections for rationale/alternatives_:
 - [reflection](#Reflection)
 
+#### Embedding
+
+TODO: link to Rust issue and Go
+
 #### Inheritance
 
-Rust could instead adopt some form of inheritance closer to what object-oriented languages provide. However, inheritance has been discussed extensively in the context of Rust, and it is generally not considered aligned with the language's design philosophy. This proposal therefore does not explore inheritance further.
+Rust could instead adopt some form of inheritance closer to what object-oriented languages provide. However, inheritance has been discussed extensively in the context of Rust, and it is generally not considered aligned with the language's design philosophy.
 
 TODO: add links
 
@@ -480,6 +519,8 @@ TODO: links
 ### Go lang
 
 Go has no inheritance either, and addresses the same problem through struct embedding. A struct field declared with only a type, no name, is _embedded_.
+
+TODO: continue
 
 ### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
@@ -516,10 +557,12 @@ One of the most used crate for delegation. It implements the `delegate!` declara
 __Strengths__:
 
 - The main advantage is the variety of transformations of the signature and the body of the generated method.
+- TODO
 
 __Weaknesses__:
 
 - Declarative macros like has no access to the callee's actual signature. Every delegated method's signature must be restated by hand in the macro definition.
+- TODO
 
 
 ### [crates.io/ambassador](http://crates.io/crates/ambassador)
@@ -542,7 +585,7 @@ TODO: this is not delegation, but the use case can be covered by delegation.
 
 ### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024, merged)
 
-This RFC allows a use declaration to bring a trait's associated function into scope by path, e.g. `use SomeTrait::some_fn;`. This is not delegation: `use Trait::func` creates a local name for an existing associated function and does not define a new item. However, the same use case can be expressed through delegation feature.
+This RFC allows a use declaration to bring a trait's associated function into scope by path, e.g. `use SomeTrait::some_fn;`. This is not delegation: `use Trait::func` creates a local name for an existing associated function and does not define a new item. However, the same use case can be expressed through the delegation feature.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
