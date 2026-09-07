@@ -317,14 +317,31 @@ where
 
 <details>
 <summary> Delegating from an inherent method to a trait implementation. </summary>
+
+[example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/std/src/collections/hash/set.rs#L149-L151)
+
+```rust
+impl<T> HashSet<T, RandomState> {
+    pub fn new() -> HashSet<T, RandomState> {
+        Default::default()
+    }
+    ...
+}
+```
+
 </details>
 
 <details>
-<summary> Delegating from a trait implementation to an inherent method. </summary>
-</details>
+<summary> Delegating from a free function to inherent method. </summary>
 
-<details>
-<summary> Delegating from a free function to another free function. </summary>
+[example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/compiler/rustc_ast_pretty/src/pprust/mod.rs#L99-L101)
+
+```rust
+pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
+	State::to_string(f)
+}
+```
+
 </details>
 
 etc.
@@ -464,9 +481,23 @@ _See the following sections for unresolved questions_:
 
 Attributes may affect diagnostics, linking, documentation, or the item's public API contract. Delegation item is a distinct item that may deliberately want different behavior than its callee. Auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
+<details>
+
+<summary> Example: discrepancy between caller and callee attributes </summary>
+
+[example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/alloc/src/io/util.rs#L390-L393)
+
+```rust
+fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
+	inlined_slow_read_byte(reader)
+}
+```
+
+</details> <br>
+
 _See the following sections for unresolved questions_:
 
-- [Which attributes should be added by default?](which-attributes-should-be-added-by-default)
+- [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
 
 ↩ [reference-level explanation](#reference-level-explanation)
 
