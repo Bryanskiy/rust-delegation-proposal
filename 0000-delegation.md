@@ -46,7 +46,7 @@ impl<T: Hash, A: Allocator + Clone> Hash for BTreeSet<T, A> {
 }
 ```
 
-The implementation does not introduce new behavior. It simply forwards a method call to a field. In practice the required repetition may even discourage the use of newtypes despite their advantages for type safety and abstraction. This situation highlights a gap in Rust’s ergonomics. While Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
+The is simply forwards a method call to a field. In practice the required repetition may even discourage the use of newtypes despite their advantages for type safety and abstraction. This situation highlights a gap in Rust’s ergonomics. While Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
 This limitation has long been recognized by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), a multiple discussions, and several macro crates ([delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador) are most popular amongst them). See [Prior art](#prior-art) for a full discussion of these efforts.
 
@@ -269,7 +269,7 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
-For the callee resolution to any variant is permitted as established in the name resolution section ([?]((#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view))). For the caller we see no reason to restrict it as long as it fits within the general desugaring scheme and is likely to be encountered in practice. Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
+For the callee resolution to any variant is permitted as established in the name resolution section ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). For the caller we see no reason to restrict it as long as it fits within the general desugaring scheme and is likely to be encountered in practice. Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
 
 _See the following sections for rational/alternatives_:
 
@@ -461,7 +461,7 @@ TODO: attributes and vis are specified manually while these are inherited. Why? 
 Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) for a 2 reasons:
 
 - A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility.
-- The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place plain expressions outside of function bodies. So this is better from an ergonomics perspective and makes it more recognisable.
+- The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this is better from an ergonomics perspective and makes it more recognisable.
 
 ↩ [traget expression](#target-expression)
 
@@ -581,9 +581,26 @@ TODO:
 
 ### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018)
 
-This RFC proposed an `#[inherent]` attribute that would let a trait implementation's methods be called without importing the trait.
+This RFC proposes an `#[inherent]` attribute that allows a trait implementation's methods to be called directly on a type without bringing the trait into scope. For example, given:
 
-TODO: this is not delegation, but the use case can be covered by delegation.
+```rust
+#[inherent]
+impl Bar for Foo { ... }
+```
+
+The methods defined in `Bar` can be called directly on instances of `Foo`, even if `Bar` is not in scope. The RFC defines `#[inherent]` as sugar for a forwarding inherent method:
+
+```rust
+impl Foo {
+    #[inline]
+    pub fn bar(&self) { <Self as Bar>::bar(self); }
+}
+```
+
+Which is almost the same as `pub reuse Bar::bar;` delegation item under this RFC.
+
+TODO: check https://github.com/rust-lang/rfcs/pull/2375#issuecomment-1722647937 and https://hackmd.io/-UXw35J3RVCnccgWnlYxig#Alternate-syntax-proposal
+
 
 ### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024, merged)
 
