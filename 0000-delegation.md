@@ -488,8 +488,14 @@ Attributes may affect diagnostics, linking, documentation, or the item's public 
 [example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/alloc/src/io/util.rs#L390-L393)
 
 ```rust
+#[inline(never)]
 fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
 	inlined_slow_read_byte(reader)
+}
+
+#[inline]
+fn inlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
+    ...
 }
 ```
 
@@ -708,7 +714,7 @@ The questions below are not expected to block acceptance of this RFC. Each is ei
 
 ### Which attributes should be added by default?
 
-Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
+Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand. TODO: opt out
 
 ↩ [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
 
