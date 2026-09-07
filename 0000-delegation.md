@@ -147,7 +147,7 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a fully qualified path, followed by an optional block expression. It comes in three flavors, matching the three forms of `DelegationPath`: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported))
+A delegation item starts with the `reuse` keyword and consists of a fully qualified path, followed by an optional block expression. It comes in three flavors, matching the three forms of `DelegationPath`: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -194,11 +194,11 @@ _See the following sections for rationale/alternatives_:
 
 The target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
 
-When no block is given the first argument is passed through unchanged. ([?](#why-is-the-block-expression-optional-in-the-target-expression)).
-
 Inside that block, `self` refers to TODO
 
-TODO: When no block is given (the `;` form), the first argument is passed through unchanged, i.e., it is effectively an alias for `{ self }`. why {}.`self` inside expression
+When no block is given the first argument is passed through unchanged. ([?](#why-is-the-block-expression-optional-in-the-target-expression)).
+
+TODO: arbitrary expression, not a field
 
 _See the following sections for rational/alternatives:_
 
@@ -458,7 +458,10 @@ TODO: attributes and vis are specified manually while these are inherited. Why? 
 
 #### Why is the target expression a block expression?
 
-TODO
+Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) for a 2 reasons:
+
+- A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility.
+- The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place plain expressions outside of function bodies. So this is better from an ergonomics perspective and makes it more recognisable.
 
 ↩ [traget expression](#target-expression)
 
@@ -478,14 +481,13 @@ TODO: find github issue
 
 #### Macros
 
-See Prior art for a closer look at the two most widely used crates for this, delegate and ambassador. Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see.
+TODO: closer look at connection between this RFC and why not to chose macros.
 
-TODO
+See [Prior art](#prior-art) for a closer look at the two most widely used crates for this, [delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador).
 
-Closing this gap fully would require the macro to see type information during expansion, which is exactly the reflection capability discussed as an alternative below.
+Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: they expand before type checking, with no access to the callee's resolved signature.
 
-_See the following sections for rationale/alternatives_:
-- [reflection](#Reflection)
+Closing this gap fully would require the macro to see type information during expansion, which is exactly the [reflection](#reflection) capability discussed as an alternative below.
 
 #### Embedding
 
@@ -501,7 +503,7 @@ TODO: add links
 
 An alternative approach to delegation in Rust would be some form of compile-time reflection. Given the ability to inspect type information such as function signatures during macro expansion, delegation can be implemented entirely as a third-party library, removing the need for dedicated language support.
 
-However, reflection is a large and complex feature that may take years to implement and stabilise. Even if it becomes available it is not clear that it would be the suitable vehicle for delegation.
+However, reflection is a large and complex feature that may take years to implement and stabilise. Even if it becomes available it is not clear that it would be the suitable vehicle for delegation. TODO: somehow to to disambiguation problem
 
 Work in this direction is already being explored. See [reflection project goal](https://github.com/rust-lang/rust-project-goals/issues/406).
 
@@ -510,7 +512,7 @@ Work in this direction is already being explored. See [reflection project goal](
 
 TODO: other langs
 
-#### Kotlin
+### Kotlin
 
 Kotlin supports interface delegation natively via a `by` clause on the supertype list: `class Derived(b: Base) : Base by b` implements `Base` for `Derived` by forwarding every one of its methods to `b`. It is close in spirit to this proposal's glob delegation.
 
@@ -590,7 +592,7 @@ This RFC allows a use declaration to bring a trait's associated function into sc
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-The questions below are not expected to block acceptance of this RFC. Each is either a refinement that can be settled during implementation or before stabilization.
+The questions below are not expected to block acceptance of this RFC. Each is either a minor detail that can be settled during implementation or before stabilization.
 
 ### Which attributes should be added by default?
 
