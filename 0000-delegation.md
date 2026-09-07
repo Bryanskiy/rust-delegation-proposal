@@ -264,7 +264,7 @@ Delegation is fundamentally the forwarding of function calls. A regular function
 
 <details>
 
-<summary> Delegating from a trait implementation to an implementation of the same trait.</summary>
+<summary> Example: delegating from a trait implementation to an implementation of the same trait.</summary>
 
 [example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/alloc/src/string.rs#L3635-L3641)
 
@@ -288,7 +288,7 @@ impl Iterator for Drain<'_> {
 </details>
 
 <details>
-<summary> Delegating from a trait implementation to an implementation of another trait. </summary>
+<summary> Example: delegating from a trait implementation to an implementation of another trait. </summary>
 
 [example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/core/src/iter/adapters/zip.rs#L74-L84)
 
@@ -316,7 +316,7 @@ where
 </details>
 
 <details>
-<summary> Delegating from an inherent method to a trait implementation. </summary>
+<summary> Example: delegating from an inherent method to a trait implementation. </summary>
 
 [example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/std/src/collections/hash/set.rs#L149-L151)
 
@@ -332,7 +332,7 @@ impl<T> HashSet<T, RandomState> {
 </details>
 
 <details>
-<summary> Delegating from a free function to inherent method. </summary>
+<summary> Example: delegating from a free function to inherent method. </summary>
 
 [example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/compiler/rustc_ast_pretty/src/pprust/mod.rs#L99-L101)
 
@@ -493,7 +493,7 @@ fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
 }
 ```
 
-</details> <br>
+</details>
 
 _See the following sections for unresolved questions_:
 
