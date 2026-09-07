@@ -238,7 +238,9 @@ TODO
 
 Glob delegation delegates every method of a trait in one go. It's only permitted inside a trait implementations.
 
-TODO
+TODO: how it works with defaults </br>
+TODO: `reuse impl Trait` </br>
+TODO: how it works with override. How it works with `reuse impl Trait`.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -260,12 +262,74 @@ TODO
 
 Delegation is fundamentally the forwarding of function calls. A regular function in Rust may be a trait method, a method in a trait implementation, an inherent method, or a free function. We can form different combinations based on the position of a caller and a callee:
 
-- Delegating from a trait implementation to an implementation of the same trait.
-- Delegating from a trait implementation to an implementation of another trait.
-- Delegating from an inherent method to a trait implementation.
-- Delegating from a trait implementation to an inherent method.
-- Delegating from a free function to another free function.
-- etc.
+<details>
+
+<summary> Delegating from a trait implementation to an implementation of the same trait.</summary>
+
+[example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/alloc/src/string.rs#L3635-L3641)
+
+```rust
+pub struct Drain<'a> {
+    ...
+    iter: Chars<'a>,
+}
+
+impl Iterator for Drain<'_> {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        self.iter.next()
+    }
+    ...
+}
+```
+
+</details>
+
+<details>
+<summary> Delegating from a trait implementation to an implementation of another trait. </summary>
+
+[example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/core/src/iter/adapters/zip.rs#L74-L84)
+
+```rust
+trait ZipImpl<A, B> {
+    fn next(&mut self) -> Option<Self::Item>;
+    ...
+}
+
+impl<A, B> Iterator for Zip<A, B>
+where
+    A: Iterator,
+    B: Iterator,
+{
+    type Item = (A::Item, B::Item);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        ZipImpl::next(self)
+    }
+    ...
+}
+```
+
+</details>
+
+<details>
+<summary> Delegating from an inherent method to a trait implementation. </summary>
+</details>
+
+<details>
+<summary> Delegating from a trait implementation to an inherent method. </summary>
+</details>
+
+<details>
+<summary> Delegating from a free function to another free function. </summary>
+</details>
+
+etc.
+
+TODO: link to 2 rfcs in prior art.
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
