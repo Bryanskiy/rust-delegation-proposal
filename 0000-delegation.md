@@ -242,12 +242,16 @@ TODO: how it works with defaults </br>
 TODO: `reuse impl Trait` </br>
 TODO: how it works with override. How it works with `reuse impl Trait`.
 
+### When things go wrong
+
+TODO: diagnostics <br>
+TODO: problems with inherence
+
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-1. __Coverage__: Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
-2. __Potential redundancy__: The delegation feature could potentially be implemented as third-partly library with compile‑time [reflection](#reflection) (if and when that becomes available).
-3. __Increased language complexity__: duh
+1. Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
+2. The delegation feature could potentially be implemented as third-partly library with compile‑time [reflection](#reflection) (if and when that becomes available).
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -354,13 +358,13 @@ For the callee resolution to any variant is permitted as established in the name
 
 _See the following sections for rational/alternatives_:
 
-- [why are qualified paths used for call disambiguation?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
+- [Why are qualified paths used for call disambiguation?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
 
-↩ [reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#reference-level-explanation)
 
 #### why are qualified paths used for call disambiguation? Part 1: high-level view.
 
-__Note__: Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
+Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
 From the delegation's perspective the alternatives can be categorized as follows:
 
@@ -368,28 +372,31 @@ From the delegation's perspective the alternatives can be categorized as follows
 
     [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations ([?](#why-can-delegation-items-be-declared-in-any-position)) since it can lead to ambiguities in a similar way to method calls.
 
-    __Note:__ One of the possibilities to infer the callee is to analyse target expression, i.e. the compiler would take the type of the expression(e.g. `typeof(expression)`) and then resolve the method by name. This approach raises open questions of its own: how ambiguities between multiple equally-named candidates would be resolved, and how broad a range of cases such inference could realistically support. For these reasons, it is left to a possible alternative reflection-based language feature [(?)](#reflection).
-
 2. Resolve the callee from the fully qualified path.
 
-   This approach covers every possible caller/callee combination without ambiguity, but it requires more verbose and explicit syntax.
+   This approach covers every possible caller/callee combination ([?](#why-can-delegation-items-be-declared-in-any-position)) without ambiguity, but it requires more verbose and explicit syntax.
 
 3. Use keywords as disambiguators.
 
     One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach doesn't generalize well to generic contexts. For example, it cannot distinguish between multiple generic implementations of the same trait. Also see next parts ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)).
 
 
-The second option has been chosen for this proposal. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
+The second option has been chosen for this proposal:
+
+1. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
+2. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
+
+TODO(spread it into sections macros/reflection/name resolution): Also one of the possibilities to implement first option is to infer the callee from name is to analyse target expression, i.e. the compiler would take the type of the expression(e.g. `typeof(expression)`) and then resolve the method by name. This approach raises open questions of its own: how ambiguities between multiple equally-named candidates would be resolved, and how broad a range of cases such inference could realistically support. For these reasons, it is left to a possible alternative reflection-based language feature [reflection](#reflection).
 
 _See the following sections for rationale/alternatives_:
 
-- [why are qualified paths used for call disambiguation? Part 2.](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)
+- [Why are qualified paths used for call disambiguation? Part 2.](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)
 
 _See the following sections for future possibilities_:
 
-- [name-based resolution as sugar](#name-based-resolution-as-sugar)
+- [Name-based resolution as sugar](#name-based-resolution-as-sugar)
 
-↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
+↩ [Qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
 #### Why are qualified paths used for call disambiguation? Part 2: `Self` type.
 
@@ -425,9 +432,9 @@ Therefore, delegation paths should permit `Self` type for the same reason that r
 
 _See the following sections for rationale/alternatives_:
 
-- [why are qualified paths used for call disambiguation? Part 3.](#why-are-qualified-paths-used-for-call-disambiguation-part-3-generic-arguments)
+- [Why are qualified paths used for call disambiguation? Part 3.](#why-are-qualified-paths-used-for-call-disambiguation-part-3-generic-arguments)
 
-↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
+↩ [Qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
 #### Why are qualified paths used for call disambiguation? Part 3: generic arguments.
 
@@ -465,7 +472,7 @@ Together, these cases motivate a general guiding principle: to support the full 
 
 TODO: part 4 - type bindings
 
-↩ [qualified paths and name resolution](#qualified-paths-and-name-resolution)
+↩ [Qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
 #### Why is visibility manually added instead of being inherited from the callee?
 
@@ -475,7 +482,7 @@ _See the following sections for unresolved questions_:
 
 - [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
 
-↩ [reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why are attributes manually added instead of being inherited from the callee?
 
@@ -505,7 +512,7 @@ _See the following sections for unresolved questions_:
 
 - [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
 
-↩ [reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is list delegation supported?
 
@@ -513,7 +520,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Some f
 
 TODO: links
 
-↩ [reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is glob delegation supported?
 
@@ -521,7 +528,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Some f
 
 TODO: links
 
-↩ [reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is renaming supported?
 
@@ -529,17 +536,19 @@ The syntax cost of supporting it is negligible compared with the benefit. Some f
 
 TODO: links
 
-↩ [reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is delegation of types and constants not supported?
 
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
 
+TODO: why constants?
+
 _See the following sections for future possibilities_:
 
 - [Support delegating types and consts as part of glob delegation](#support-delegating-types-and-consts-as-part-of-glob-delegation)
 
-↩ [reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why are function qualifiers inherited unchanged from the callee?
 
@@ -555,7 +564,7 @@ One further consequence worth noting: because a delegation item's ABI, `unsafe`-
 
 TODO: attributes and vis are specified manually while these are inherited. Why? Programmer who wants a different behavior can still write a wrapper by hand.
 
-↩ [individual delegation](#individual-delegation)
+↩ [Individual delegation](#individual-delegation)
 
 #### Why is the target expression a block expression?
 
@@ -564,21 +573,23 @@ Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](
 - A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility.
 - The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this is better from an ergonomics perspective and makes it more recognisable.
 
-↩ [traget expression](#target-expression)
+↩ [Target expression](#target-expression)
 
 #### Why is the block expression optional in the target expression?
 
 TODO: The `;` form is effectively an alias for `{ self }`.
 
-↩ [traget expression](#target-expression)
+↩ [Target expression](#target-expression)
 
 #### Why is delegation of variadic functions not supported?
 
 TODO: find github issue
 
-↩ [individual delegation](#individual-delegation)
+↩ [Individual delegation](#individual-delegation)
 
 ### Alternatives to this RFC
+
+TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/text/3735-field-projections.md
 
 #### Macros
 
@@ -586,13 +597,13 @@ TODO: closer look at connection between this RFC and why not to chose macros.
 
 See [Prior art](#prior-art) for a closer look at the two most widely used crates for this, [delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador).
 
-Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: they expand before type checking, with no access to the callee's resolved signature.
+Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: they don't have access to the callee's resolved signature.
 
-Closing this gap fully would require the macro to see type information during expansion, which is exactly the [reflection](#reflection) capability discussed as an alternative below.
+Closing this gap fully would require the macro to see type information during expansion, which is the [reflection](#reflection) capability discussed as an alternative below.
 
 #### Embedding
 
-TODO: link to Rust issue and Go
+TODO: https://github.com/rust-lang/rfcs/issues/2431 + link to Go
 
 #### Inheritance
 
@@ -602,7 +613,7 @@ TODO: add links
 
 #### Reflection
 
-An alternative approach to delegation in Rust would be some form of compile-time reflection. Given the ability to inspect type information such as function signatures during macro expansion, delegation can be implemented entirely as a third-party library, removing the need for dedicated language support.
+An alternative approach to delegation in Rust would be some form of compile-time reflection. Given the ability to inspect type information such as function signatures during macro expansion, delegation could be implemented as a third-party library, removing the need for dedicated language support.
 
 However, reflection is a large and complex feature that may take years to implement and stabilise. Even if it becomes available it is not clear that it would be the suitable vehicle for delegation. TODO: somehow to to disambiguation problem
 
@@ -611,7 +622,8 @@ Work in this direction is already being explored. See [reflection project goal](
 ## Prior art
 [prior-art]: #prior-art
 
-TODO: other langs
+TODO: other langs <br>
+TODO: derive in Haskell?
 
 ### Kotlin
 
@@ -698,14 +710,12 @@ impl Foo {
 }
 ```
 
-Which is almost the same as `pub reuse Bar::bar;` delegation item under this RFC.
 
-TODO: check https://github.com/rust-lang/rfcs/pull/2375#issuecomment-1722647937 and https://hackmd.io/-UXw35J3RVCnccgWnlYxig#Alternate-syntax-proposal
-
+Later on the PR, [nikomatsakis proposed](https://github.com/rust-lang/rfcs/pull/2375#issuecomment-1722647937) replacing `#[inherent]` with `use`. Which is almost the same as `pub reuse Bar::bar;` delegation item under this RFC.
 
 ### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024, merged)
 
-This RFC allows a use declaration to bring a trait's associated function into scope by path, e.g. `use SomeTrait::some_fn;`. This is not delegation: `use Trait::func` creates a local name for an existing associated function and does not define a new item. However, the same use case can be expressed through the delegation feature.
+This RFC allows a use declaration to bring a trait's associated functions and constants into scope by path, e.g. `use SomeTrait::some_fn;`. This is not delegation: `use Trait::func` creates a local name for an existing associated function and does not define a new item. However, the same use case can be expressed through the delegation feature.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
@@ -743,7 +753,7 @@ We prefer to leave all control to the user while also adding a deny-by-default l
 
 The draft uses `reuse`, but other options like `delegate` or `forward` could be considered.
 
-↩ [reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#reference-level-explanation)
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
