@@ -230,8 +230,6 @@ _See the following sections for rationale/alternatives_:
 
 List delegation declares several items at once from a shared path prefix. This desugars to one individual delegation item per name.
 
-TODO: consider how different target expressions might be applied to individual items like with use chain shortcuts.
-
 TODO
 
 ### Glob delegation
@@ -239,8 +237,7 @@ TODO
 Glob delegation delegates every method of a trait in one go. It's only permitted inside a trait implementations.
 
 TODO: how it works with defaults </br>
-TODO: `reuse impl Trait` </br>
-TODO: how it works with override. How it works with `reuse impl Trait`.
+TODO: `reuse impl Trait` + how it works with override </br>
 
 ### When things go wrong
 
@@ -385,8 +382,6 @@ The second option has been chosen for this proposal:
 
 1. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
 2. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
-
-TODO(spread it into sections macros/reflection/name resolution): Also one of the possibilities to implement first option is to infer the callee from name is to analyse target expression, i.e. the compiler would take the type of the expression(e.g. `typeof(expression)`) and then resolve the method by name. This approach raises open questions of its own: how ambiguities between multiple equally-named candidates would be resolved, and how broad a range of cases such inference could realistically support. For these reasons, it is left to a possible alternative reflection-based language feature [reflection](#reflection).
 
 _See the following sections for rationale/alternatives_:
 
@@ -542,6 +537,7 @@ TODO: links
 
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
 
+TODO: what is target expression mean here?
 TODO: why constants?
 
 _See the following sections for future possibilities_:
@@ -558,11 +554,14 @@ The function header comprises qualifiers such as `const`, `async`, `unsafe`, `ex
 - If the callee is a const function, the generated function is also `const`. This is necessary for the delegation to be usable in const contexts.
 - If the callee is `async`, the generated function is also `async`. This is necessary for the delegation to be usable in async contexts.
 - If the callee is `unsafe`, the generated function is also `unsafe`. Delegation merely forwards the call and cannot verify the safety contract required by the callee. Therefore, the same safety obligations must be imposed on caller.
-- The generated function inherits the same ABI. TODO: explanation.
+- The generated function inherits the same ABI. It would be counterintuitive otherwise.
 
 One further consequence worth noting: because a delegation item's ABI, `unsafe`-ness, and `async`-ness are always identical to the callee's, a delegation item can be coerced to a function pointer or passed anywhere the callee itself could be.
 
-TODO: attributes and vis are specified manually while these are inherited. Why? Programmer who wants a different behavior can still write a wrapper by hand.
+TODO: why don't use callee's as default and override? <br>
+TODO: attributes and vis are specified manually while these are inherited. Why?
+
+Programmer who wants a different behavior can still write a wrapper by hand.
 
 ↩ [Individual delegation](#individual-delegation)
 
@@ -571,7 +570,7 @@ TODO: attributes and vis are specified manually while these are inherited. Why? 
 Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) for a 2 reasons:
 
 - A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility.
-- The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this is better from an ergonomics perspective and makes it more recognisable.
+- The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this might be better from an ergonomic perspective.
 
 ↩ [Target expression](#target-expression)
 
@@ -593,11 +592,9 @@ TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/t
 
 #### Macros
 
-TODO: closer look at connection between this RFC and why not to chose macros.
-
 See [Prior art](#prior-art) for a closer look at the two most widely used crates for this, [delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador).
 
-Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: they don't have access to the callee's resolved signature.
+Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: macros do not have access to type information such as the callee's resolved signature or the methods of a trait.
 
 Closing this gap fully would require the macro to see type information during expansion, which is the [reflection](#reflection) capability discussed as an alternative below.
 
@@ -724,7 +721,9 @@ The questions below are not expected to block acceptance of this RFC. Each is ei
 
 ### Which attributes should be added by default?
 
-Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it can't change what the delegation item means and it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand. TODO: opt out
+Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
+
+There should also be a way to opt out of default attributes when they are not desired.
 
 ↩ [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
 
