@@ -387,7 +387,7 @@ From the delegation's perspective the alternatives can be categorized as follows
 The second option has been chosen for this proposal:
 
 1. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
-2. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: because every callee is already reachable through a fully qualified path, name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
+2. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
 
 _See the following sections for rationale/alternatives_:
 
@@ -519,7 +519,7 @@ _See the following sections for unresolved questions_:
 
 The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support lists.
 
-TODO: links
+TODO: links to prior art
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -527,7 +527,7 @@ TODO: links
 
 The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support globs.
 
-TODO: links
+TODO: links to prior art
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -535,7 +535,7 @@ TODO: links
 
 The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support renaming.
 
-TODO: links
+TODO: links to prior art
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -554,18 +554,9 @@ _See the following sections for future possibilities_:
 
 #### Why are function qualifiers inherited unchanged from the callee?
 
-
-The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`.
-
-- If the callee is a const function, the generated function is also `const`. This is necessary for the delegation to be usable in const contexts.
-- If the callee is `async`, the generated function is also `async`. This is necessary for the delegation to be usable in async contexts.
-- If the callee is `unsafe`, the generated function is also `unsafe`. Delegation merely forwards the call and cannot verify the safety contract required by the callee. Therefore, the same safety obligations must be imposed on caller.
-- The generated function inherits the same ABI. It would be counterintuitive otherwise.
+The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`. Having different qualifiers from the callee would either be counterintuitive or, in some cases, fail to compile. For example, a const fn cannot call a non-const function.
 
 One further consequence worth noting: because a delegation item's ABI, `unsafe`-ness, and `async`-ness are always identical to the callee's, a delegation item can be coerced to a function pointer or passed anywhere the callee itself could be.
-
-TODO: why don't use callee's as default and override? <br>
-TODO: attributes and vis are specified manually while these are inherited. Why?
 
 Programmer who wants a different behavior can still write a wrapper by hand.
 
