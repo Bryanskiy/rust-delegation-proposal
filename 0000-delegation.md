@@ -249,6 +249,7 @@ TODO: problems with inherence
 
 1. Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
 2. The delegation feature could potentially be implemented as third-partly library with compile‑time [reflection](#reflection) (if and when that becomes available).
+3. Every new keyword and item is something newcomers have to learn, something maintainers have to keep implementing correctly, and something the wider tooling ecosystem, such as rustfmt, rust-analyzer and rustdoc has to account for.
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -543,7 +544,7 @@ TODO: links to prior art
 
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
 
-TODO: what is target expression mean here?
+TODO: what is target expression mean here? <br>
 TODO: why constants?
 
 _See the following sections for future possibilities_:
@@ -554,7 +555,7 @@ _See the following sections for future possibilities_:
 
 #### Why are function qualifiers inherited unchanged from the callee?
 
-The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`. Having different qualifiers from the callee would either be counterintuitive or, in some cases, fail to compile. For example, a const fn cannot call a non-const function.
+The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`. Having different qualifiers from the callee would either be counterintuitive or, in some cases, fail to compile. For example, a `const fn` cannot call a non-`const` function.
 
 One further consequence worth noting: because a delegation item's ABI, `unsafe`-ness, and `async`-ness are always identical to the callee's, a delegation item can be coerced to a function pointer or passed anywhere the callee itself could be.
 
@@ -566,8 +567,8 @@ Programmer who wants a different behavior can still write a wrapper by hand.
 
 Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) for a 2 reasons:
 
-- A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility.
-- The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this might be better from an ergonomic perspective.
+1. A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility.
+2. The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this might be better from an ergonomic perspective.
 
 ↩ [Target expression](#target-expression)
 
@@ -661,22 +662,52 @@ The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#
 
 ### [crates.io/delegate](https://crates.io/crates/delegate)
 
-One of the most used crate for delegation. It implements the `delegate!` declarative macro, which delegates method calls to selected expressions.
+The most used crate for delegation. It implements the `delegate!` declarative macro, which delegates method calls to selected expressions.
+
+<details>
+
+<summary> Example: delegate macro.</summary>
+
+```rust
+struct Inner;
+impl Inner {
+    pub fn method(&self, num: u32) -> u32 { num }
+}
+
+struct Wrapper {
+    inner: Inner
+}
+
+impl Wrapper {
+    delegate! {
+        to self.inner {
+            // calls method_res, unwraps the result, then calls into
+            #[unwrap]
+            #[into]
+            #[call(method_res)]
+            pub fn method_res_into(&self, num: u32) -> u64;
+        }
+    }
+}
+```
+
+</details>
 
 __Strengths__:
 
-- The main advantage is the variety of transformations of the signature and the body of the generated method.
-- TODO
+- It supports a broad range of transformations through attributes such as `#[into(u64)]`, `#[unwrap]`, `#[await(true/false)]` and many others, which can modify the signature or body of the generated method. This makes the macro applicable to a wide range of delegation patterns.
+- It is not limited to trait implementations.
 
 __Weaknesses__:
 
-- Declarative macros like has no access to the callee's actual signature. Every delegated method's signature must be restated by hand in the macro definition.
-- TODO
+- Declarative macros has no access to the callee's actual signature. Every delegated method's signature must be restated by hand in the macro definition.
 
 
 ### [crates.io/ambassador](http://crates.io/crates/ambassador)
 
 The second most popular crate for delegation. in contrast with [delegate](https://crates.io/crates/delegate), procedural macros are used, not declarative ones.
+
+TODO: example
 
 __Strengths__:
 
