@@ -695,27 +695,54 @@ impl Wrapper {
 
 __Strengths__:
 
-- It supports a broad range of transformations through attributes such as `#[into(u64)]`, `#[unwrap]`, `#[await(true/false)]` and many others, which can modify the signature or body of the generated method. This makes the macro applicable to a wide range of delegation patterns.
-- It is not limited to trait implementations.
+1. It supports a broad range of transformations through attributes such as `#[into(u64)]`, `#[unwrap]`, `#[await(true/false)]` and many others, which can modify the signature or body of the generated method. This makes the macro applicable to a wide range of delegation patterns.
+2. It is not limited to trait implementations.
 
 __Weaknesses__:
 
-- Declarative macros has no access to the callee's actual signature. Every delegated method's signature must be restated by hand in the macro definition.
+1. Declarative macros has no access to the callee's actual signature. Every delegated method's signature must be restated by hand in the macro definition.
 
 
 ### [crates.io/ambassador](http://crates.io/crates/ambassador)
 
 The second most popular crate for delegation. in contrast with [delegate](https://crates.io/crates/delegate), procedural macros are used, not declarative ones.
 
-TODO: example
+<details>
+
+<summary> Example: ambassador macro.</summary>
+
+```rust
+use ambassador::delegatable_trait;
+
+#[delegatable_trait]
+pub trait Trait {
+    fn method(&self, input: &str) -> String;
+}
+
+pub struct Inner;
+
+impl Trait for Inner {
+    fn method(&self, input: &str) -> String {
+        // impl
+    }
+}
+
+#[derive(Delegate)]
+#[delegate(Trait)]
+pub struct Outer(Inner);
+```
+
+</details>
 
 __Strengths__:
 
-TODO:
+1. Unlike delegate, the callee's signature does not need to be restated at each delegation site.
 
 __Weaknesses__:
 
-TODO:
+1. It supports a narrower range of delegation patterns then delegate: Ambassador can only delegate trait implementations, delegates only to fields, and does not support transformations of the delegated method's signature.
+2. The trait being delegated must be annotated with `#[delegatable_trait]`. For foreign traits, it must instead be re-declared locally with #`[delegatable_trait_remote]`.
+3. In `#[delegate(..., target = "self")]` or `#[delegate(..., where = "A: Shout")]` expressions are specified as strings rather than using regular Rust syntax.
 
 ### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018)
 
