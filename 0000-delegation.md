@@ -490,6 +490,8 @@ _See the following sections for unresolved questions_:
 
 Attributes may affect diagnostics, linking, documentation, or the item's public API contract. Delegation item is a distinct item that may deliberately want different behavior than its callee. Auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
+TODO: what about list/glob delegation?
+
 <details>
 
 <summary> Example: discrepancy between caller and callee attributes </summary>
@@ -518,25 +520,42 @@ _See the following sections for unresolved questions_:
 
 #### Why is list delegation supported?
 
-The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support lists.
+The syntax cost of supporting it is negligible compared with the benefit. It is also not a new concept in Rust, as `use` declarations already support lists.
 
-TODO: links to prior art
+> [!NOTE]
+>
+> Some form of it appears in many prior attempt at delegation, demonstrating that users need this capability:
+> 1. `use expression for name_1, name_i` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+> 2. `delegate fn name_1, fn name_i to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+> 3. TODO: other langs
+
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is glob delegation supported?
 
-The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support globs.
+The syntax cost of supporting it is negligible compared with the benefit. It is also not a new concept in Rust, as `use` declarations already support globs.
 
-TODO: links to prior art
+> [!NOTE]
+>
+> Some form of it appears in many prior attempt at delegation, demonstrating that users need this capability.
+> 1. `use expression` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+> 2. `delegate * to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+> 3. `by` clause forwards an entire interface in one declaration in Kotlin.
+> 4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
+> TODO
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is renaming supported?
 
-The syntax cost of supporting it is negligible compared with the benefit. Some form of it appears in essentially every prior attempt at delegation, demonstrating that users need this capability. It is also not a new concept in Rust, as `use` declarations already support renaming.
+The syntax cost of supporting it is negligible compared with the benefit. It is also not a new concept in Rust, as `use` declarations already support renaming.
 
-TODO: links to prior art
+> [!NOTE]
+>
+> Some form of it appears in many prior attempt at delegation, demonstrating that users need this capability.
+> `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
+> TODO: scala, others
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -778,7 +797,9 @@ The questions below are not expected to block acceptance of this RFC. Each is ei
 
 Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
 
-There should also be a way to opt out of default attributes when they are not desired.
+> [!IMPORTANT]
+>
+> There should also be a way to opt out of default attributes when they are not desired. For `#[inline]`, this may be done with `#[inline(never)]` on the delegation item, but the appropriate mechanism depends on the attribute, and some attributes may have no corresponding way to opt out.
 
 ↩ [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
 
