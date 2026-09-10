@@ -32,7 +32,7 @@ TODO: note that doc format was taken from another rfc/create something else
 
 ## Motivation
 
-Rust does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through _composition_: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Although these forwarding implementations are usually trivial they impose a practical cost in terms of verbosity and readability.
+Rust [deliberately]((https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing)) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Although these forwarding implementations are usually trivial they impose a practical cost in terms of verbosity and readability.
 
 Consider a common pattern found throughout real Rust codebases:
 
@@ -599,8 +599,6 @@ _See the following sections for future possibilities_:
 
 The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`. Having different qualifiers from the callee would either be counterintuitive or, in some cases, fail to compile. For example, a `const fn` cannot call a non-`const` function.
 
-One further consequence worth noting: because a delegation item's ABI, `unsafe`-ness, and `async`-ness are always identical to the callee's, a delegation item can be coerced to a function pointer or passed anywhere the callee itself could be.
-
 Programmer who wants a different behavior can still write a wrapper by hand.
 
 ↩ [Individual delegation](#individual-delegation)
@@ -654,7 +652,7 @@ TODO: https://github.com/rust-lang/rfcs/issues/2431 + link to Go
 
 Rust could instead adopt some form of inheritance closer to what object-oriented languages provide. However, inheritance has been discussed extensively in the context of Rust, and it is generally not considered aligned with the language's design philosophy.
 
-TODO: add links
+Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) for why.
 
 ## Prior art
 [prior-art]: #prior-art
