@@ -583,7 +583,11 @@ impl Trait for S {
 
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
 
-Beyond the namespace ambiguity, a target expression does not have a coherent meaning for types and constants. In in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), paths were not used, so the target expression was the only way to identify the type of the delegated object. With paths, target expressions are no longer needed for this purpose: changing the target expression does not change the result of desugaring. Without a target expression, this could instead be implemented using the `use` keyword, as in [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591).
+> [!NOTE]
+>
+> Target expression does not have a coherent meaning for types and constants. In in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), paths were not used, so the target expression was the only way to identify the type of the delegated object. With paths, target expressions are no longer needed for this purpose: changing the target expression does not change the result of desugaring.
+
+TODO: why consts?
 
 _See the following sections for future possibilities_:
 
