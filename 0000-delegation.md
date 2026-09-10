@@ -543,7 +543,7 @@ The syntax cost of supporting it is negligible compared with the benefit. It is 
 > 2. `delegate * to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
 > 3. `by` clause forwards an entire interface in one declaration in Kotlin.
 > 4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
-> TODO
+> 5. TODO
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -554,17 +554,36 @@ The syntax cost of supporting it is negligible compared with the benefit. It is 
 > [!NOTE]
 >
 > Some form of it appears in many prior attempt at delegation, demonstrating that users need this capability.
-> `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
-> TODO: scala, others
+> 1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
+> 2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
+> 3. TODO: scala, others
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is delegation of types and constants not supported?
 
+<details>
+<summary> Example: possible desugaring for delegation of types and constants. </summary>
+
+```rust
+impl Trait for S {
+    reuse Trait::{Item, MAX, func} { self.0 }
+}
+
+impl Trait for S {
+    type Item = <F as Trait>::Item;
+    const MAX = <F as Trait>::MAX;
+    fn func(&self) -> u32 {
+        Trait::func(&self.0)
+    }
+}
+```
+
+</details>
+
 Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
 
-TODO: what is target expression mean here? <br>
-TODO: why constants?
+Beyond the namespace ambiguity, a target expression does not have a coherent meaning for types and constants. In in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), paths were not used, so the target expression was the only way to identify the type of the delegated object. With paths, target expressions are no longer needed for this purpose: changing the target expression does not change the result of desugaring. Without a target expression, this could instead be implemented using the `use` keyword, as in [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591).
 
 _See the following sections for future possibilities_:
 
