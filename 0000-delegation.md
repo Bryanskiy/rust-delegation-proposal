@@ -24,11 +24,20 @@ The following terminology is frequently used in this proposal:
 
 This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
 
-
 TODO: links to rational/external/other sections </br>
 TODO: notes to implementation experience, other notes </br>
 TODO: examples </br>
 TODO: note that doc format was taken from another rfc/create something else
+
+### Guiding principle
+
+A recurring question throughout this RFC is whether a particular delegation pattern should be supported. We therefore want to formulate a general guiding principle: _prefer generality over special casing_.
+
+If a pattern fits within the proposal's syntax budget and can be expressed by a single, uniform desugaring rule, support it, even when it is expected to be rare in practice, rather than limiting support to what appears to be the common case.
+
+Part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions (see [Prior art](#prior-art)) and in both cases the forward-compatibility concerns were never addressed. In this proposal we want to explore the design space more thoroughly.
+
+This is a default, not an absolute, sometimes we might violate it for one reason or another.
 
 ## Motivation
 
@@ -353,7 +362,7 @@ All these combinations appear in real world code via regular calls and each repr
 > Generality is particularly relevant in light of the existing prior art. The two previous delegation RFCs, [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), deliberately limited delegation to trait methods. Other proposals like [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) and [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) address other use cases through different language mechanisms.
 
 
-For the callee resolution to any variant is permitted as established in the name resolution section ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). For the caller we see no reason to restrict it as long as it fits within the general desugaring scheme and is likely to be encountered in practice. Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
+For the callee resolution to any variant is permitted as established in the name resolution section ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). For the caller we see no reason to restrict (also see [Guiding principle](#guiding-principle)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
 
 _See the following sections for rational/alternatives_:
 
@@ -428,7 +437,7 @@ Allowing `Self` in delegation paths makes this possible:
 impl Trait for Outer { reuse <Inner as Trait>::foo; } // OK
 ```
 
-Therefore, delegation paths should permit `Self` type for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee.
+Therefore, delegation paths should permit `Self` type for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [Guiding principle](#guiding-principle)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -468,7 +477,7 @@ Allowing generic arguments in delegation paths makes this possible:
 impl<T> Trait<T> for Outer { reuse Trait::<()>::foo { self.0 } } // OK
 ```
 
-Together, these cases motivate a general guiding principle: to support the full range of existing Rust path syntax that is useful for identifying a callee, rather than introducing special-case restrictions for delegation. As long as the syntax remains within the proposal's syntax budget, there is no reason to impose a narrower subset.
+Therefore, delegation paths should permit generic arguments for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [Guiding principle](#guiding-principle)).
 
 TODO: part 4 - type bindings
 
@@ -605,7 +614,7 @@ Programmer who wants a different behavior can still write a wrapper by hand.
 
 Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) for a 2 reasons:
 
-1. A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility.
+1. A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility (also see [Guiding principle](#guiding-principle)).
 2. The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this might be better from an ergonomic perspective.
 
 ↩ [Target expression](#target-expression)
