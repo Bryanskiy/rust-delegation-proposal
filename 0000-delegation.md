@@ -527,43 +527,43 @@ _See the following sections for unresolved questions_:
 
 #### Why is list delegation supported?
 
-The syntax cost of supporting it is negligible compared with the benefit. It is also not a new concept in Rust, as `use` declarations already support lists.
+The syntax cost of supporting it is negligible compared with the benefit. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
 
-> [!NOTE]
->
-> Some form of it appears in many prior attempt at delegation, demonstrating that users need this capability:
-> 1. `use expression for name_1, name_i` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
-> 2. `delegate fn name_1, fn name_i to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
-> 3. TODO: other langs
+It is also not a new concept in Rust, as `use` declarations already support lists.
+
+Also, some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+1. `use expression for name_1, name_i` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+2. `delegate fn name_1, fn name_i to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+3. TODO: other langs
 
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is glob delegation supported?
 
-The syntax cost of supporting it is negligible compared with the benefit. It is also not a new concept in Rust, as `use` declarations already support globs.
+The syntax cost of supporting it is negligible compared with the benefit. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
 
-> [!NOTE]
->
-> Some form of it appears in many prior attempt at delegation, demonstrating that users need this capability.
-> 1. `use expression` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
-> 2. `delegate * to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
-> 3. `by` clause forwards an entire interface in one declaration in Kotlin.
-> 4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
-> 5. TODO
+It is also not a new concept in Rust, as `use` declarations already support globs.
+
+Also, some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+1. `use expression` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+2. `delegate * to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+3. `by` clause forwards an entire interface in one declaration in Kotlin.
+4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
+5. TODO
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is renaming supported?
 
-The syntax cost of supporting it is negligible compared with the benefit. It is also not a new concept in Rust, as `use` declarations already support renaming.
+The syntax cost of supporting it is negligible compared with the benefit.
 
-> [!NOTE]
->
-> Some form of it appears in many prior attempt at delegation, demonstrating that users need this capability.
-> 1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
-> 2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
-> 3. TODO: scala, others
+It is also not a new concept in Rust, as `use` declarations already support renaming.
+
+Also, some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
+2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
+3. TODO: scala, others
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -614,7 +614,7 @@ Programmer who wants a different behavior can still write a wrapper by hand.
 
 Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) for a 2 reasons:
 
-1. A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form ensures forward compatibility (also see [Guiding principle](#guiding-principle)).
+1. A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [guiding principle](#guiding-principle).
 2. The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this might be better from an ergonomic perspective.
 
 ↩ [Target expression](#target-expression)
