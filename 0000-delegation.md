@@ -216,7 +216,7 @@ _See the following sections for rational/alternatives:_
 
 Individual delegation is the simplest form: it declares exactly one new item, forwarding to exactly one callee named by `DelegationPath`.
 
-Function qualifiers are inherited unchanged from the callee. None of these qualifiers can be added, removed, or overridden at the delegation site ([?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)).
+Function qualifiers are inherited unchanged from the callee. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)).
 
 TODO
 
@@ -497,28 +497,6 @@ _See the following sections for unresolved questions_:
 
 Attributes may affect diagnostics, linking, documentation, or the item's public API contract. Delegation item is a distinct item that may deliberately want different behavior than its callee. Auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
-TODO: what about list/glob delegation?
-
-<details>
-
-<summary> Example: discrepancy between caller and callee attributes </summary>
-
-[example link](https://github.com/rust-lang/rust/blob/752b9bf8798c2ffc1d3fe2b804c04454366fc6d6/library/alloc/src/io/util.rs#L390-L393)
-
-```rust
-#[inline(never)]
-fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
-	inlined_slow_read_byte(reader)
-}
-
-#[inline]
-fn inlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
-    ...
-}
-```
-
-</details>
-
 _See the following sections for unresolved questions_:
 
 - [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
@@ -527,43 +505,44 @@ _See the following sections for unresolved questions_:
 
 #### Why is list delegation supported?
 
-The syntax cost of supporting it is negligible compared with the benefit. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
+The syntax cost of supporting it is negligible compared with the benefit. Specifically:
 
-It is also not a new concept in Rust, as `use` declarations already support lists.
-
-Also, some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-1. `use expression for name_1, name_i` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
-2. `delegate fn name_1, fn name_i to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
-3. TODO: other langs
+1. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
+2. It is not a new concept in Rust, as `use` declarations already support lists.
+3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+   1. `use expression for name_1, name_i` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+   2. `delegate fn name_1, fn name_i to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+   3. TODO: continue
 
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is glob delegation supported?
 
-The syntax cost of supporting it is negligible compared with the benefit. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
+The syntax cost of supporting it is negligible compared with the benefit. Specifically:
 
-It is also not a new concept in Rust, as `use` declarations already support globs.
+1. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
+2. It is not a new concept in Rust, as `use` declarations already support globs.
+3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+   1. `use expression` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+   2. `delegate * to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+   3. `by` clause forwards an entire interface in one declaration in Kotlin.
+   4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
+   5. TODO
 
-Also, some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-1. `use expression` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
-2. `delegate * to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
-3. `by` clause forwards an entire interface in one declaration in Kotlin.
-4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
-5. TODO
+TODO: why don't limit yourself with lists only?
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is renaming supported?
 
-The syntax cost of supporting it is negligible compared with the benefit.
+The syntax cost of supporting it is negligible compared with the benefit. Specifically:
 
-It is also not a new concept in Rust, as `use` declarations already support renaming.
-
-Also, some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
-2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
-3. TODO: scala, others
+1. It is not a new concept in Rust, as `use` declarations already support renaming.
+2. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+   1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
+   2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
+   3. TODO: scala, others
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -604,9 +583,20 @@ _See the following sections for future possibilities_:
 
 #### Why are function qualifiers inherited unchanged from the callee?
 
-The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`. Having different qualifiers from the callee would either be counterintuitive or, in some cases, fail to compile. For example, a `const fn` cannot call a non-`const` function.
+The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`. The following alternatives exist:
 
-Programmer who wants a different behavior can still write a wrapper by hand.
+1. Behave identically to regular functions
+
+    Delegation items use the same defaults: `const`, `async`, `unsafe` are omitted, `extern "Rust"` is assigned. Specifying a qualifier overrides the corresponding default for the generated function. This works when the callee also uses the default qualifiers. If they don't:
+
+    - `const`: If the callee is `const` and the delegation item is not, there is no problem: a `const` function can be called from a non-`const` function. However, the delegation item cannot be called from a const context unless `const` is also specified on the delegation item.
+    - `ABI`: A mismatch here does not prevent the call from compiling, but it is difficult to see where that would be useful, and the user usually would have to restate ABI for the delegation item.
+    - `unsafe`: Calling an `unsafe` function from a non-`unsafe` function requires wrapping the call in an `unsafe` block. We do not want this to happen silently, so the delegation item would have to be marked `unsafe`. Otherwise, the compiler would emit an error.
+    - `async`: forwarding to an `async` callee from a non-`async` delegation item isn't possible without changing what gets generated. TODO
+
+2. Inherit qualifiers from the callee.
+
+The proposal chooses to inherit all function qualifiers from the callee unchanged. The main problem with first approach is verbosity. Matching the callee's qualifiers is essentially the only sensible choice, yet that approach would force users to repeat qualifiers for delegation items.
 
 ↩ [Individual delegation](#individual-delegation)
 
@@ -614,7 +604,7 @@ Programmer who wants a different behavior can still write a wrapper by hand.
 
 Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) for a 2 reasons:
 
-1. A block expression can contain arbitrary statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [guiding principle](#guiding-principle).
+1. A block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [guiding principle](#guiding-principle).
 2. The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this might be better from an ergonomic perspective.
 
 ↩ [Target expression](#target-expression)
@@ -666,12 +656,15 @@ Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inhe
 
 TODO: other langs <br>
 TODO: derive in Haskell?
+TODO: export in scala
 
-### Kotlin
+### [Kotlin](https://kotlinlang.org/docs/delegation.html)
 
 Kotlin supports interface delegation natively via a `by` clause on the supertype list: `class Derived(b: Base) : Base by b` implements `Base` for `Derived` by forwarding every one of its methods to `b`. It is close in spirit to this proposal's glob delegation.
 
-TODO: links
+Kotlin also lets `Derived` override individual delegated members instead of taking all of them from `b`.
+
+Kotlin extends the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` (and, for a `var`, `setValue`) [operator functions](https://kotlinlang.org/docs/delegated-properties.html) that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here, since Rust has neither properties nor a similar mechanism.
 
 ### Go lang
 
