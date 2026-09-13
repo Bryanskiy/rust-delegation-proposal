@@ -662,7 +662,7 @@ Kotlin supports interface delegation natively via a `by` clause on the supertype
 
 Kotlin also lets `Derived` override individual delegated members instead of taking all of them from `b`.
 
-Kotlin [extends](https://kotlinlang.org/docs/delegated-properties.html) the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` (and, for a `var`, `setValue`) operator functions that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here, since Rust has neither properties nor a similar mechanism.
+Kotlin [extends](https://kotlinlang.org/docs/delegated-properties.html) the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` and `setValue` operator functions that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here, since Rust has neither properties nor a similar mechanism.
 
 ### Go lang
 
