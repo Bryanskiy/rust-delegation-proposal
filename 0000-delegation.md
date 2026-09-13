@@ -530,8 +530,6 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
    5. TODO
 
-TODO: why don't limit yourself with lists only?
-
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 #### Why is renaming supported?
@@ -664,7 +662,7 @@ Kotlin supports interface delegation natively via a `by` clause on the supertype
 
 Kotlin also lets `Derived` override individual delegated members instead of taking all of them from `b`.
 
-Kotlin extends the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` (and, for a `var`, `setValue`) [operator functions](https://kotlinlang.org/docs/delegated-properties.html) that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here, since Rust has neither properties nor a similar mechanism.
+Kotlin [extends](https://kotlinlang.org/docs/delegated-properties.html) the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` (and, for a `var`, `setValue`) operator functions that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here, since Rust has neither properties nor a similar mechanism.
 
 ### Go lang
 
@@ -816,7 +814,7 @@ The questions below are not expected to block acceptance of this RFC. Each is ei
 
 ### Which attributes should be added by default?
 
-Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute: inlining is purely an optimisation, so it keeps a  forwarding wrapper as close to zero-cost abstraction as writing the call by hand.
+Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute.
 
 > [!IMPORTANT]
 >
