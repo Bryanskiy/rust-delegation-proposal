@@ -357,9 +357,7 @@ etc.
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
-> [!NOTE]
->
-> Generality is particularly relevant in light of the existing prior art. The two previous delegation RFCs, [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), deliberately limited delegation to trait methods. Other proposals like [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) and [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) address other use cases through different language mechanisms.
+Generality is particularly relevant in light of the existing prior art. The two previous delegation RFCs, [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), deliberately limited delegation to trait methods. Other proposals like [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) and [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) address other use cases through different language mechanisms.
 
 
 For the callee resolution to any variant is permitted as established in the name resolution section ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). For the caller we see no reason to restrict (also see [Guiding principle](#guiding-principle)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
@@ -372,9 +370,7 @@ _See the following sections for rational/alternatives_:
 
 #### why are qualified paths used for call disambiguation? Part 1: high-level view.
 
-> [!NOTE]
->
-> Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
+Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
 
 From the delegation's perspective the alternatives can be categorized as follows:
@@ -654,11 +650,17 @@ Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inhe
 ## Prior art
 [prior-art]: #prior-art
 
-TODO: other langs <br>
-TODO: derive in Haskell?
+- [Delegation or similar mechanisms in other languages](#delegation-or-similar-mechanisms-in-other-languages)
+- [Related proposals in Rust](#related-proposals-in-Rust)
+- [Crates](#crates)
+- TODO: other discussions
+
+### Delegation or similar mechanisms in other languages
+
+TODO: derive in Haskell? <br>
 TODO: export in scala
 
-### [Kotlin](https://kotlinlang.org/docs/delegation.html)
+#### [Kotlin](https://kotlinlang.org/docs/delegation.html)
 
 Kotlin supports interface delegation natively via a `by` clause on the supertype list: `class Derived(b: Base) : Base by b` implements `Base` for `Derived` by forwarding every one of its methods to `b`. It is close in spirit to this proposal's glob delegation.
 
@@ -666,13 +668,15 @@ Kotlin also lets `Derived` override individual delegated members instead of taki
 
 Kotlin [extends](https://kotlinlang.org/docs/delegated-properties.html) the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` and `setValue` operator functions that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here, since Rust has neither properties nor a similar mechanism.
 
-### Go lang
+#### Go lang
 
 Go has no inheritance either, and addresses the same problem through struct embedding. A struct field declared with only a type, no name, is _embedded_.
 
 TODO: continue
 
-### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
+### Related proposals in Rust
+
+#### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
 
 Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406). This RFC introduces a new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax takes the forms:
 - `impl Trait for Type { use expression; }` - delegates all methods of the trait. <br>
@@ -680,13 +684,12 @@ Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfc
 
 where `typeof(expression)` implements `Trait`.
 
-#### Main reasons for proposal rejection
+Main reasons for proposal rejection:
 
-_Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior. The mechanism for desugaring is not defined. Also see [comment](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
+1. _Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior. The mechanism for desugaring is not defined. Also see [comment](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
+2. _Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
 
-_Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
-
-### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
+#### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
 
 Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). The design was stricter to address the semantics ambiguities of the earlier proposal. The syntax takes the forms:
 - `impl Trait for Type { delegate * to expression; }` - delegates all methods of the trait. <br>
@@ -696,11 +699,39 @@ where `expression` resolves to a field of `self` (e.g., `self.field`) and `typ
 
 Delegation is allowed only for methods that take a receiver by value, by reference or by mutable reference. Proposed desugaring scheme translates delegation item into [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html).
 
-#### Main reasons for proposal rejection
+Main reasons for proposal rejection:
 
-The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011) due to the lang team bandwidth. Additionally, forward compatibility concerns were never fully addressed.
+1. The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011) due to the lang team bandwidth.
+2. Additionally, forward compatibility concerns were never fully addressed.
 
-### [crates.io/delegate](https://crates.io/crates/delegate)
+#### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018)
+
+This RFC proposes an `#[inherent]` attribute that allows a trait implementation's methods to be called directly on a type without bringing the trait into scope. For example, given:
+
+```rust
+#[inherent]
+impl Bar for Foo { ... }
+```
+
+The methods defined in `Bar` can be called directly on instances of `Foo`, even if `Bar` is not in scope. The RFC defines `#[inherent]` as sugar for a forwarding inherent method:
+
+```rust
+impl Foo {
+    #[inline]
+    pub fn bar(&self) { <Self as Bar>::bar(self); }
+}
+```
+
+
+Later on the PR, [nikomatsakis proposed](https://github.com/rust-lang/rfcs/pull/2375#issuecomment-1722647937) replacing `#[inherent]` with `use`. Which is almost the same as `pub reuse Bar::bar;` delegation item under this RFC.
+
+#### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024, merged)
+
+This RFC allows a use declaration to bring a trait's associated functions and constants into scope by path, e.g. `use SomeTrait::some_fn;`. This is not delegation: `use Trait::func` creates a local name for an existing associated function and does not define a new item. However, the same use case can be expressed through the delegation feature.
+
+### Crates
+
+#### [crates.io/delegate](https://crates.io/crates/delegate)
 
 The most used crate for delegation. It implements the `delegate!` declarative macro, which delegates method calls to selected expressions.
 
@@ -733,17 +764,17 @@ impl Wrapper {
 
 </details>
 
-__Strengths__:
+_Strengths_:
 
 1. It supports a broad range of transformations through attributes such as `#[into(u64)]`, `#[unwrap]`, `#[await(true/false)]` and many others, which can modify the signature or body of the generated method. This makes the macro applicable to a wide range of delegation patterns.
 2. It is not limited to trait implementations.
 
-__Weaknesses__:
+_Weaknesses_:
 
 1. Declarative macros has no access to the callee's actual signature. Every delegated method's signature must be restated by hand in the macro definition.
 
 
-### [crates.io/ambassador](http://crates.io/crates/ambassador)
+#### [crates.io/ambassador](http://crates.io/crates/ambassador)
 
 The second most popular crate for delegation. in contrast with [delegate](https://crates.io/crates/delegate), procedural macros are used, not declarative ones.
 
@@ -774,40 +805,15 @@ pub struct Outer(Inner);
 
 </details>
 
-__Strengths__:
+_Strengths_:
 
 1. Unlike delegate, the callee's signature does not need to be restated at each delegation site.
 
-__Weaknesses__:
+_Weaknesses_:
 
 1. It supports a narrower range of delegation patterns then delegate: Ambassador can only delegate trait implementations, delegates only to fields, and does not support transformations of the delegated method's signature.
 2. The trait being delegated must be annotated with `#[delegatable_trait]`. For foreign traits, it must instead be re-declared locally with #`[delegatable_trait_remote]`.
 3. In `#[delegate(..., target = "self")]` or `#[delegate(..., where = "A: Shout")]` expressions are specified as strings rather than using regular Rust syntax.
-
-### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018)
-
-This RFC proposes an `#[inherent]` attribute that allows a trait implementation's methods to be called directly on a type without bringing the trait into scope. For example, given:
-
-```rust
-#[inherent]
-impl Bar for Foo { ... }
-```
-
-The methods defined in `Bar` can be called directly on instances of `Foo`, even if `Bar` is not in scope. The RFC defines `#[inherent]` as sugar for a forwarding inherent method:
-
-```rust
-impl Foo {
-    #[inline]
-    pub fn bar(&self) { <Self as Bar>::bar(self); }
-}
-```
-
-
-Later on the PR, [nikomatsakis proposed](https://github.com/rust-lang/rfcs/pull/2375#issuecomment-1722647937) replacing `#[inherent]` with `use`. Which is almost the same as `pub reuse Bar::bar;` delegation item under this RFC.
-
-### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024, merged)
-
-This RFC allows a use declaration to bring a trait's associated functions and constants into scope by path, e.g. `use SomeTrait::some_fn;`. This is not delegation: `use Trait::func` creates a local name for an existing associated function and does not define a new item. However, the same use case can be expressed through the delegation feature.
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
