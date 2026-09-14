@@ -18,26 +18,30 @@ The following terminology is frequently used in this proposal:
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
 - _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
 - _desugaring_ - the translation from a delegation item into regular function calls.
-- _delegation pattern_ - TODO
+- _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
 
-## Conventions
-
-This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
-
-TODO: links to rational/external/other sections </br>
-TODO: notes to implementation experience, other notes </br>
-TODO: examples </br>
-TODO: note that doc format was taken from another rfc/create something else
-
-### Guiding principle
+## Design guiding principle
 
 A recurring question throughout this RFC is whether a particular delegation pattern should be supported. We therefore want to formulate a general guiding principle: _prefer generality over special casing_.
 
 If a pattern fits within the proposal's syntax budget and can be expressed by a single, uniform desugaring rule, support it, even when it is expected to be rare in practice, rather than limiting support to what appears to be the common case.
 
-Part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions (see [Prior art](#prior-art)) and in both cases the forward-compatibility concerns were never addressed. In this proposal we want to explore the design space more thoroughly.
+Part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions and in both cases the forward-compatibility concerns were never addressed. In this proposal we want to explore the design space more thoroughly.
 
 This is a default, not an absolute, sometimes we might violate it for one reason or another.
+
+## Implementation experience
+
+This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
+
+TODO: continue
+
+## How to read this RFC
+
+TODO: links to rational/external/other sections </br>
+TODO: notes to implementation experience, other notes </br>
+TODO: examples </br>
+TODO: note that doc format was taken from another rfc/create something else
 
 ## Motivation
 
@@ -639,7 +643,9 @@ Work in this direction is already being explored. See [reflection project goal](
 
 #### Embedding
 
-TODO: https://github.com/rust-lang/rfcs/issues/2431 + link to Go
+Rust could instead adopt some form of type embedding (See Go in [Prior art](#prior-art)), where an anonymous field's methods are automatically "promoted" onto the outer struct's method set.
+
+[rust-lang/rfcs#2431](https://github.com/rust-lang/rfcs/issues/2431), opened in 2018, sketches a mechanism for Rust. The issue was posted as a rough idea seeking feedback, but it received little response and remains open with no further activity.
 
 #### Inheritance
 
@@ -723,6 +729,8 @@ func main() {
 </details>
 
 ### Related proposals in Rust
+
+TODO: check https://github.com/GuillaumeGomez/rfcs/blob/derive-deref/text/0000-derive-deref.md
 
 #### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015, closed)
 
