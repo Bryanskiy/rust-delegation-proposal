@@ -660,7 +660,7 @@ Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inhe
 TODO: derive in Haskell? <br>
 TODO: export in scala
 
-#### [Kotlin](https://kotlinlang.org/docs/delegation.html)
+#### [Delegation in Kotlin](https://kotlinlang.org/docs/delegation.html)
 
 Kotlin supports interface delegation natively via a `by` clause on the supertype list: `class Derived(b: Base) : Base by b` implements `Base` for `Derived` by forwarding every one of its methods to `b`. It is close in spirit to this proposal's glob delegation.
 
@@ -668,11 +668,37 @@ Kotlin also lets `Derived` override individual delegated members instead of taki
 
 Kotlin [extends](https://kotlinlang.org/docs/delegated-properties.html) the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` and `setValue` operator functions that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here, since Rust has neither properties nor a similar mechanism.
 
-#### Go lang
+#### [Type embeddings in Go](https://go.dev/ref/spec#Struct_types)
 
-Go has no inheritance either, and addresses the same problem through struct embedding. A struct field declared with only a type, no name, is _embedded_.
+Go has no inheritance either, and addresses the same problem through struct embedding. A struct field declared with only a type, no name, is _embedded_. Embedded value's fields and methods become available directly on the outer struct (`outer.Method()` instead of `outer.inner.Method()`).
 
-TODO: continue
+<details>
+
+<summary> Example: Go struct embedding.</summary>
+
+```go
+package main
+
+import "fmt"
+
+type Inner struct{}
+
+func (Inner) Hello() {
+    fmt.Println("hello world")
+}
+
+type Outer struct {
+    Inner
+    Name string
+}
+
+func main() {
+    o := Outer{Inner: Inner{}, Name: "name"}
+    o.Hello() // promoted from Inner; no o.Inner.Hello() needed
+}
+```
+
+</details>
 
 ### Related proposals in Rust
 
