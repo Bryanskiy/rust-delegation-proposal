@@ -508,7 +508,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
 3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
    1. `use expression for name_1, name_i` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
    2. `delegate fn name_1, fn name_i to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
-   3. TODO: continue
+   3. `export path . { sel_1, ..., sel_n }` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
 
 ↩ [Reference-level explanation](#reference-level-explanation)
@@ -524,7 +524,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    2. `delegate * to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
    3. `by` clause forwards an entire interface in one declaration in Kotlin.
    4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
-   5. TODO
+   5. `export name.*` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -536,7 +536,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
 2. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
    1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
    2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
-   3. TODO: scala, others
+   3. `export A as B` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -657,8 +657,30 @@ Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inhe
 
 ### Delegation or similar mechanisms in other languages
 
-TODO: derive in Haskell? <br>
-TODO: export in scala
+#### [Export clauses in Scala](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
+
+Scala 3's `export` clause has the form `export path . { sel_1, ..., sel_n }` and defines aliases for selected members of an object.
+
+<details>
+
+<summary> Example: Scala export clause.</summary>
+
+```scala
+class Inner:
+  def hello(): String = "hello"
+
+class Outer(inner: Inner):
+  export inner.hello
+
+@main def run(): Unit =
+  println(new Outer(new Inner()).hello())
+```
+
+</details>
+
+Its selectors line up closely with this proposal's three delegation forms: a single selector corresponds to individual delegation, multiple selectors correspond to list delegation, and a wildcard selector (`*`) corresponds to glob delegation.
+
+`x as y` renames a member on export, the very same `as` keyword this RFC uses for [renaming](#why-is-renaming-supported).
 
 #### [Delegation in Kotlin](https://kotlinlang.org/docs/delegation.html)
 
@@ -702,7 +724,7 @@ func main() {
 
 ### Related proposals in Rust
 
-#### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015)
+#### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015, closed)
 
 Delegation was first proposed in a [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406). This RFC introduces a new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax takes the forms:
 - `impl Trait for Type { use expression; }` - delegates all methods of the trait. <br>
@@ -715,7 +737,7 @@ Main reasons for proposal rejection:
 1. _Unclear semantics._ It's not clear what kinds of expressions are allowed in the delegation body. Underspecified `self` behavior. The mechanism for desugaring is not defined. Also see [comment](https://github.com/rust-lang/rfcs/pull/1406#issuecomment-269175112).
 2. _Forward compatibility._ The RFC intentionally leaves many features for future work, but there was insufficient evidence that the proposed design could be clearly extended to those features without breaking semantics and requiring a redesign.
 
-#### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018)
+#### [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) (2018, closed)
 
 Delegation was proposed again in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). The design was stricter to address the semantics ambiguities of the earlier proposal. The syntax takes the forms:
 - `impl Trait for Type { delegate * to expression; }` - delegates all methods of the trait. <br>
@@ -730,7 +752,7 @@ Main reasons for proposal rejection:
 1. The second proposal was [postponed](https://github.com/rust-lang/rfcs/pull/2393#issuecomment-816822011) due to the lang team bandwidth.
 2. Additionally, forward compatibility concerns were never fully addressed.
 
-#### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018)
+#### [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) (2018, open)
 
 This RFC proposes an `#[inherent]` attribute that allows a trait implementation's methods to be called directly on a type without bringing the trait into scope. For example, given:
 
