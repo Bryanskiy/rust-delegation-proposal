@@ -52,7 +52,7 @@ This is a default, not an absolute, it may be violated when there is a sufficien
 
 This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
 
-TODO: continue
+Many of the examples in this proposal can be tried on nightly Rust. However, the implementation is still incomplete, contains some questionable design decisions, and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
 
 ## How to read this RFC
 
@@ -160,7 +160,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any position where items are allowed. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
+Delegation items can be declared in any context where functions with bodies are permitted by the semantic rules. For example, delegation items cannot be declared inside an `extern` block. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
 
 The delegation item has the form:
 ```diff
@@ -168,15 +168,20 @@ The delegation item has the form:
 +     reuse DelegationPath ( BlockExpression | ; )
 +
 + DelegationPath →
-+     QualifiedPathType :: DelegationPathSegment
-+   | QualifiedPathType :: { ( DelegationPathSegment )+ ,? }
-+   | QualifiedPathType :: *
++     Path :: DelegationPathSegment
++   | Path :: { ( DelegationPathSegment )+ ,? }
++   | Path :: *
 +
 + DelegationPathSegment →
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a fully qualified path, followed by an optional block expression. It comes in three flavors, matching the three forms of `DelegationPath`: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)). Delegation of types and constants is not supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
+A delegation item starts with the `reuse` keyword and consists of a path(possibly qualified)
+followed by an optional block expression.
+
+Delegation item comes in three flavors, matching the three forms of `DelegationPath`: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
+
+Delegation of types and constants is not currently supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -220,9 +225,9 @@ _See the following sections for rationale/alternatives_:
 
 - [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
 
-### Qualified paths and name resolution
+### Paths and name resolution
 
-Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)).
+Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)).
 
 > [!NOTE]
 >
