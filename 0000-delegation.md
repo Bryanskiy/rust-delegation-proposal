@@ -204,7 +204,7 @@ _See the following sections for future possibilities_:
 
 ### Desugaring of individual delegation
 
-Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. During desugaring, we generate a function call to that callee. We call the function from which the delegated item's information is inherited the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?]((#why-is-the-delegation-resolution-the-trait-being-implemented))). In all other cases, it is the item resolved by the delegation path. (See [Paths and name resolution](#paths-and-name-resolution) for details on how the path is resolved).
+Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is inherited the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented)). In all other cases, it is the item resolved by the path. (See [Paths and name resolution](#paths-and-name-resolution) for details on how the path is resolved).
 
 The generated function body for an individual delegation have the form:
 
