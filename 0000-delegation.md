@@ -20,15 +20,33 @@ The following terminology is frequently used in this proposal:
 - _desugaring_ - the translation from a delegation item into regular function calls.
 - _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
 
-## Design guiding principle
+## Design guiding principles
 
-A recurring question throughout this RFC is whether a particular delegation pattern should be supported. We therefore want to formulate a general guiding principle: _prefer generality over special casing_.
+A recurring question throughout this RFC is whether a particular delegation pattern should be supported. We want to formulate several guiding principles that are used to rationalize individual design decisions.
+
+### Rule №1: stay in syntax budget
+
+We should fit delegation item into some syntax that is no more complex than `use` imports.
+
+```rust
+// Import item
+#[attrs]
+pub(vis) use prefix::{a, b, c as d};
+
+// Delegation item
+#[attrs]
+pub(vis) reuse prefix::{a, b, c as d} { target_expr }
+```
+
+The motivation here is to avoid more complex features such as argument or return-value transformations, which would require pre- or post-processing closures. In such cases, the delegation item becomes less readable and more akin to a regular function call. These transformations can instead be written manually or expressed using a macro (See [Prior art](#prior-art)).
+
+### Rule №2: prefer generality over special casing
 
 If a pattern fits within the proposal's syntax budget and can be expressed by a single, uniform desugaring rule, support it, even when it is expected to be rare in practice, rather than limiting support to what appears to be the common case.
 
-Part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions and in both cases the forward-compatibility concerns were never addressed. In this proposal we want to explore the design space more thoroughly.
+Part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions and in both cases the forward-compatibility concerns were never addressed. Therefore in this proposal we want to explore the design space more thoroughly.
 
-This is a default, not an absolute, sometimes we might violate it for one reason or another.
+This is a default, not an absolute, it may be violated when there is a sufficiently strong reason to do so.
 
 ## Implementation experience
 
