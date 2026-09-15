@@ -19,6 +19,7 @@ The following terminology is frequently used in this proposal:
 - _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
 - _desugaring_ - the translation from a delegation item into regular function calls.
 - _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
+- _delegation resolution_ - a function from which the signature is inherited during desugaring.
 
 ## Design guiding principles
 
@@ -176,7 +177,7 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a path, which may be either simple or qualified, followed by an optional block expression. Their role is discussed in the next sections.
+A delegation item starts with the `reuse` keyword and consists of a path, which may be either simple or qualified, followed by an optional block expression.
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
@@ -203,7 +204,9 @@ _See the following sections for future possibilities_:
 
 ### Desugaring of individual delegation
 
-Individual delegation is the simplest form: it declares exactly one new item, forwarding to exactly one callee named by `DelegationPath`. The generated function body for an individual delegation have the form:
+Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. During desugaring, we generate a function call to that callee. We call the function from which the delegated item's information is inherited the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?]((#why-is-the-delegation-resolution-the-trait-being-implemented))). In all other cases, it is the item resolved by the delegation path. (See [Paths and name resolution](#paths-and-name-resolution) for details on how the path is resolved).
+
+The generated function body for an individual delegation have the form:
 
 ```rust
 #[attrs]
@@ -214,15 +217,17 @@ pub(vis) FunctionQualifiers fn name(arg0: Arg0, arg1: Arg1, ..., argN: ArgN) {
 
 - Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site plus default attributes.
 - Visibility `(pub(vis))` is exactly as specified by the user at the delegation site.
-- Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the callee. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)).
+- Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
 - `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature. (See [glob](#glob-delegation) and [list](#list-delegation) delegation)
 - TODO: generics, predicates
 - TODO: when target expression contains several statements
+- TODO: path
 
 _See the following sections for rationale/alternatives_:
 
-- [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
+- [Why is the delegation resolution the trait being implemented?](#why-is-the-delegation-resolution-the-trait-being-implemented)
+- [Why are function qualifiers inherited unchanged?](#why-are-function-qualifiers-inherited-unchanged)
 
 ### Paths and name resolution
 
@@ -238,8 +243,6 @@ Paths provide an unambiguous way to identify callable items, including trait met
 > Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a _compatible_ signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
 >
 > TODO: continue
-
-TODO: say from whom signature is inherited. For trait impl ... For others ...
 
 callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
 
@@ -509,6 +512,12 @@ TODO: part 4 - type bindings
 
 ↩ [Qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
+#### Why is the delegation resolution the trait being implemented?
+
+TODO
+
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+
 #### Why is visibility manually added instead of being inherited from the callee?
 
 Delegation item is a distinct item that may deliberately want different behavior than its callee. This also avoids ambiguity for users about whether omitting a visibility modifier makes the delegation item private or causes it to inherit the callee's visibility.
@@ -570,7 +579,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
-#### Why are function qualifiers inherited unchanged from the callee?
+#### Why are function qualifiers inherited unchanged?
 
 The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`. The following alternatives exist:
 
