@@ -204,7 +204,7 @@ _See the following sections for future possibilities_:
 
 ### Desugaring of individual delegation
 
-Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is inherited the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented)). In all other cases, it is the item resolved by the path. (See [Paths and name resolution](#paths-and-name-resolution) for details on how the path is resolved).
+Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is inherited the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [Paths and name resolution](#paths-and-name-resolution) for details on how the path is resolved).
 
 The generated function body for an individual delegation have the form:
 
@@ -222,11 +222,11 @@ pub(vis) FunctionQualifiers fn name(arg0: Arg0, arg1: Arg1, ..., argN: ArgN) {
 - `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature. (See [glob](#glob-delegation) and [list](#list-delegation) delegation)
 - TODO: generics, predicates
 - TODO: when target expression contains several statements
-- TODO: path
+- TODO: generics propagation in paths
 
 _See the following sections for rationale/alternatives_:
 
-- [Why is the delegation resolution the trait being implemented?](#why-is-the-delegation-resolution-the-trait-being-implemented)
+- [Why is the delegation resolution the trait being implemented in trait implementations?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)
 - [Why are function qualifiers inherited unchanged?](#why-are-function-qualifiers-inherited-unchanged)
 
 ### Paths and name resolution
@@ -512,9 +512,43 @@ TODO: part 4 - type bindings
 
 ↩ [Qualified paths and name resolution](#qualified-paths-and-name-resolution)
 
-#### Why is the delegation resolution the trait being implemented?
+#### Why is the delegation resolution the trait being implemented in trait implementations?
 
-TODO
+With _“Refined trait implementations”_ RFC ([rust-lang/rfcs#3245](https://github.com/rust-lang/rfcs/pull/3245))  an implementation signature may be more specific than the one declared in the trait.
+
+If delegation item is in a trait implementation (e.g. `impl Trait for Type { /*delegate foo*/ }`) we have two opportunities:
+
+1. inherit information from the function resolved via callee path
+
+    This option allows to support refined implementations
+
+2. inherit information from the trait method itself
+
+    This option allows to support cases where callee have different signature, but can be called to due to the arguments or return value coercion:
+
+    ```rust
+    trait MirPass<'tcx> {
+        fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
+    }
+
+    trait MirLint<'tcx> {
+        fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>);
+    }
+
+    pub(super) struct Lint<T>(pub T);
+
+    impl<'tcx, T> MirPass<'tcx> for Lint<T>
+    where
+        T: MirLint<'tcx>
+    {
+        fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+            self.0.run_lint(tcx, body)
+        }
+    }
+    ```
+    Here, `run_lint` accepts `&Body<'tcx>`, while the trait method `run_pass` requires `&mut Body<'tcx>`. The delegation can work because `&mut T` can coerce to `&T`. However, if the generated function inherited its signature from the callee, `run_pass` would instead take `&Body<'tcx>`, violating the trait definition and resulting in a compilation error.
+
+The `#[refine]` attribute proposed by RFC 3245 could potentially be used for changing the behavior from one to another. We suggest inheriting signatures from the trait by default.
 
 ↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
 
