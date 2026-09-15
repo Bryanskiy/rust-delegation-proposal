@@ -217,7 +217,8 @@ pub(vis) FunctionQualifiers fn name(arg0: Arg0, arg1: Arg1, ..., argN: ArgN) {
 - Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the callee. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
 - `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature. (See [glob](#glob-delegation) and [list](#list-delegation) delegation)
-- TODO
+- TODO: generics, predicates
+- TODO: when target expression contains several statements
 
 _See the following sections for rationale/alternatives_:
 
@@ -251,18 +252,16 @@ _See the following sections for rationale/alternatives_:
 
 ### Target expression
 
-The target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
+The target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that transforms the delegation item's first argument before that argument is forwarded to the resolved callee. When no block is given the first argument is passed through unchanged ([?](#why-can-the-block-expression-be-omitted)). There are no restrictions on the expressions that can be used inside the target expression ([?](#why-target-expression-is-not-restricted)).
+
 
 Inside that block, `self` refers to TODO
-
-When no block is given the first argument is passed through unchanged. ([?](#why-is-the-block-expression-optional-in-the-target-expression)).
-
-TODO: arbitrary expression, not a field
 
 _See the following sections for rational/alternatives:_
 
 - [Why is the target expression a block expression?](#why-is-the-target-expression-a-block-expression)
-- [Why is the block expression optional in the target expression?](#why-is-the-block-expression-optional-in-the-target-expression)
+- [Why can the block expression be omitted?](#why-can-the-block-expression-be-omitted)
+- [Why target expression is not restricted?](#why-target-expression-is-not-restricted)
 
 ### List delegation
 
@@ -391,7 +390,7 @@ All these combinations appear in real world code via regular calls and each repr
 Generality is particularly relevant in light of the existing prior art. The two previous delegation RFCs, [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), deliberately limited delegation to trait methods. Other proposals like [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) and [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) address other use cases through different language mechanisms.
 
 
-For the callee resolution to any variant is permitted as established in the name resolution section ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). For the caller we see no reason to restrict (also see [Guiding principle](#guiding-principle)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
+For the callee resolution to any variant is permitted as established in the name resolution section ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). For the caller we see no reason to restrict (also see [guiding principles](#design-guiding-principles)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
 
 _See the following sections for rational/alternatives_:
 
@@ -464,7 +463,7 @@ Allowing `Self` in delegation paths makes this possible:
 impl Trait for Outer { reuse <Inner as Trait>::foo; } // OK
 ```
 
-Therefore, delegation paths should permit `Self` type for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [Guiding principle](#guiding-principle)).
+Therefore, delegation paths should permit `Self` type for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [guiding principles](#design-guiding-principles)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -504,7 +503,7 @@ Allowing generic arguments in delegation paths makes this possible:
 impl<T> Trait<T> for Outer { reuse Trait::<()>::foo { self.0 } } // OK
 ```
 
-Therefore, delegation paths should permit generic arguments for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [Guiding principle](#guiding-principle)).
+Therefore, delegation paths should permit generic arguments for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [guiding principles](#design-guiding-principles)).
 
 TODO: part 4 - type bindings
 
@@ -592,16 +591,19 @@ The proposal chooses to inherit all function qualifiers from the callee unchange
 
 #### Why is the target expression a block expression?
 
-Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) for a 2 reasons:
-
-1. A block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [guiding principle](#guiding-principle).
-2. The language consistently uses block expressions such as `unsafe { ... }`, `async { ... }`, or `gen { ... }` and does not usually place bare expressions outside of function bodies. So this might be better from an ergonomic perspective.
+Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [guiding principles](#design-guiding-principles).
 
 ↩ [Target expression](#target-expression)
 
-#### Why is the block expression optional in the target expression?
+#### Why can the block expression be omitted?
 
-TODO: The `;` form is effectively an alias for `{ self }`.
+The `;` form is effectively an alias for `{ self }`, providing a more ergonomic way to delegate free functions and methods without a receiver.
+
+↩ [Target expression](#target-expression)
+
+#### Why target expression is not restricted?
+
+In the feedback to the [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) it was suggested that delegation be limited to fields. This suggestion was adopted in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [guiding principles](#design-guiding-principles).
 
 ↩ [Target expression](#target-expression)
 
