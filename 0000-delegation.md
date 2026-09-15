@@ -198,6 +198,28 @@ _See the following sections for future possibilities_:
 
 - [Support delegating types and consts](#support-delegating-types-and-consts)
 
+### Desugaring of individual delegation
+
+Individual delegation is the simplest form: it declares exactly one new item, forwarding to exactly one callee named by `DelegationPath`. The generated function body for an individual delegation have the form:
+
+```rust
+#[attrs]
+pub(vis) FunctionQualifiers fn name(arg0: Arg0, arg1: Arg1, ..., argN: ArgN) {
+    path(ADJ(target_expr(arg0)), arg1, ..., argN)
+}
+```
+
+- Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site plus default attributes.
+- Visibility `(pub(vis))` is exactly as specified by the user at the delegation site.
+- Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the callee. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)).
+- The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
+- `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature. (See [glob](#glob-delegation) and [list](#list-delegation) delegation)
+- TODO
+
+_See the following sections for rationale/alternatives_:
+
+- [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
+
 ### Qualified paths and name resolution
 
 Qualified paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)).
@@ -215,9 +237,14 @@ Qualified paths provide an unambiguous way to identify callable items, including
 
 TODO: say from whom signature is inherited. For trait impl ... For others ...
 
+callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+
+Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
+
 _See the following sections for rationale/alternatives_:
 
 - [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
+- [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 
 ### Target expression
 
@@ -233,27 +260,6 @@ _See the following sections for rational/alternatives:_
 
 - [Why is the target expression a block expression?](#why-is-the-target-expression-a-block-expression)
 - [Why is the block expression optional in the target expression?](#why-is-the-block-expression-optional-in-the-target-expression)
-
-### Individual delegation
-
-Individual delegation is the simplest form: it declares exactly one new item, forwarding to exactly one callee named by `DelegationPath`.
-
-Function qualifiers are inherited unchanged from the callee. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)).
-
-TODO
-
-Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
-
-TODO
-
-callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
-
-TODO
-
-_See the following sections for rationale/alternatives_:
-
-- [Why are function qualifiers inherited unchanged from the callee?](#why-are-function-qualifiers-inherited-unchanged-from-the-callee)
-- [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 
 ### List delegation
 
