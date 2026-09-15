@@ -52,7 +52,7 @@ This is a default, not an absolute, it may be violated when there is a sufficien
 
 This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
 
-Many of the examples in this proposal can be tried on nightly Rust. However, the implementation is still incomplete, contains some questionable design decisions, and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
+Many of the examples in this proposal can be tried on nightly Rust. However the implementation is still incomplete, contains some questionable design decisions and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
 
 ## How to read this RFC
 
@@ -181,7 +181,7 @@ followed by an optional block expression.
 
 Delegation item comes in three flavors, matching the three forms of `DelegationPath`: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
-Delegation of types and constants is not currently supported ([?](#why-is-delegation-of-types-and-constants-not-supported)).
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -191,7 +191,6 @@ _See the following sections for rationale/alternatives_:
 - [Why is list delegation supported?](#why-is-list-delegation-supported)
 - [Why is glob delegation supported?](#why-is-glob-delegation-supported)
 - [Why is renaming supported?](#why-is-renaming-supported)
-- [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
 
 _See the following sections for unresolved questions_:
 
@@ -227,7 +226,7 @@ _See the following sections for rationale/alternatives_:
 
 ### Paths and name resolution
 
-Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)).
+Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)).
 
 > [!NOTE]
 >
@@ -570,43 +569,6 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
    2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
    3. `export A as B` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
-
-↩ [Reference-level explanation](#reference-level-explanation)
-
-#### Why is delegation of types and constants not supported?
-
-We could support desugaring for types and consts as follows:
-
-```rust
-impl Trait for S {
-    reuse Trait::{Item, MAX, func} { self.0 }
-}
-
-impl Trait for S {
-    type Item = <F as Trait>::Item;
-    const MAX = <F as Trait>::MAX;
-    fn func(&self) -> u32 {
-        <F as Trait>::func(&self.0)
-    }
-}
-```
-
-However, there are 2 complexities:
-1. Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
-
-   This can be solved by introducing a disambiguator for types. One of the suggestions from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use `fn`/`type`/`const` keywords.
-
-2. Currently, delegation of types and constants can only be implemented when the path is fully specified, including the `Self` type (e.g. `<F as Trait>::Item`). Otherwise, we would need the ability to determine `typeof(target_expression)` before lowering, which is difficult.
-
-    As a result:
-    1. Delegation becomes less useful outside of list and glob delegation: the same path can already be written without `reuse`.
-    2. The target expression becomes redundant, since it does not participate in determining the type of the nested item.
-
-Based on these notes we would like to postpone delegation of types and constants.
-
-_See the following sections for future possibilities_:
-
-- [Support delegating types and consts](#support-delegating-types-and-consts)
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -955,11 +917,30 @@ A shorter syntax that infers the callee from a bare method name could be layered
 
 ### Support delegating types and consts
 
-1. Delegation of types requires a disambiguation mechanism.
+We could support desugaring for types and consts as follows:
 
-    Glob delegation could still support delegation of types because it does not specify individual names.
+```rust
+impl Trait for S {
+    reuse Trait::{Item, MAX, func} { self.0 }
+}
 
-2. Proper implementation of delegation of types and constants would require a mechanism for determining the type of the target expression before lowering. Such a mechanism would also be required for the [name-based resolution as sugar](#name-based-resolution-as-sugar).
+impl Trait for S {
+    type Item = <F as Trait>::Item;
+    const MAX = <F as Trait>::MAX;
+    fn func(&self) -> u32 {
+        <F as Trait>::func(&self.0)
+    }
+}
+```
+
+However, there are 2 complexities:
+1. Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated fn/const called `name`.
+
+   This can be solved by introducing a disambiguator for types. One of the suggestions from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use `fn`/`type`/`const` keywords.
+
+2. TODO: impl
 
 
-↩ [Why is delegation of types and constants not supported?](#why-is-delegation-of-types-and-constants-not-supported)
+Based on these notes we would like to postpone delegation of types and constants.
+
+↩ [Reference-level explanation](#reference-level-explanation)
