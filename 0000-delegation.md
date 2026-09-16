@@ -231,14 +231,16 @@ WhereClause
 - Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
 - Generic parameters(`GenericParams`) and predicates(`WhereClause`) are inherited from the delegation resolution with respect to provided generic arguments in callee path. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
-- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first, followed by the function forwarding call. The arguments to which the target expression is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, this is the method receiver.
-- `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature (See [_Glob delegation_](#glob-delegation) and [_List delegation_](#list-delegation) for rationale).
-- The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment.
+- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the target expression is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, this is the method receiver.
+- `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature (See [_Glob delegation_](#glob-delegation) and [_List delegation_](#list-delegation) for rationale).
+- The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
 
 _See the following sections for rationale/alternatives_:
 
 - [Why is the delegation resolution the trait being implemented in trait implementations?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)
 - [Why are function qualifiers inherited unchanged?](#why-are-function-qualifiers-inherited-unchanged)
+- [Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)
+- [Why are statements not passed to the call?](#why-are-statements-not-passed-to-the-call)
 
 ### Paths and name resolution
 
@@ -674,7 +676,19 @@ The function header comprises qualifiers such as `const`, `async`, `unsafe`, `ex
 
 The proposal chooses to inherit all function qualifiers from the callee unchanged. The main problem with first approach is verbosity. Matching the callee's qualifiers is essentially the only sensible choice, yet that approach would force users to repeat qualifiers for delegation items.
 
-↩ [Individual delegation](#individual-delegation)
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+
+#### Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?
+
+TODO
+
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+
+#### Why are statements not passed to the call?
+
+TODO
+
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
 
 #### Why is the target expression a block expression?
 
@@ -698,7 +712,7 @@ In the feedback to the [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) 
 
 TODO: find github issue
 
-↩ [Individual delegation](#individual-delegation)
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
 
 ### Alternatives to this RFC
 
