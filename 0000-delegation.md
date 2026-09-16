@@ -39,7 +39,7 @@ pub(vis) use prefix::{a, b, c as d};
 pub(vis) reuse prefix::{a, b, c as d} { target_expr }
 ```
 
-The motivation here is that in such cases, the delegation item becomes less readable and more akin to a full function implementation. These transformations can instead be written manually or expressed using a macro (See [_Prior art_](#prior-art)).
+The motivation here is to avoid more complex features such as argument or return-value transformations, which would require pre- or post-processing closures. In such cases, the delegation item becomes less readable and more akin to a full function implementation. These transformations can instead be written manually or expressed using a macro (See [_Prior art_](#prior-art)).
 
 ### Rule №2: prefer generality over special casing
 
@@ -231,9 +231,9 @@ WhereClause
 - Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
 - Generic parameters(`GenericParams`) and predicates(`WhereClause`) are inherited from the delegation resolution with respect to provided generic arguments in callee path. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
-- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first, followed by the function forwarding call. The arguments to which the target expression is applied are specified in the [_Target expression_](#target-expression) section. Usually, this is the method receiver.
+- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first, followed by the function forwarding call. The arguments to which the target expression is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, this is the method receiver.
 - `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature (See [_Glob delegation_](#glob-delegation) and [_List delegation_](#list-delegation) for rationale).
-- TODO: generics propagation in paths
+- The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment.
 
 _See the following sections for rationale/alternatives_:
 
