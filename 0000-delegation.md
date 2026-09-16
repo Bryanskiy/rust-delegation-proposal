@@ -39,7 +39,7 @@ pub(vis) use prefix::{a, b, c as d};
 pub(vis) reuse prefix::{a, b, c as d} { target_expr }
 ```
 
-The motivation here is to avoid more complex features such as argument or return-value transformations, which would require pre- or post-processing closures. In such cases, the delegation item becomes less readable and more akin to a regular function call. These transformations can instead be written manually or expressed using a macro (See [_Prior art_](#prior-art)).
+The motivation here is that in such cases, the delegation item becomes less readable and more akin to a full function implementation. These transformations can instead be written manually or expressed using a macro (See [_Prior art_](#prior-art)).
 
 ### Rule №2: prefer generality over special casing
 
@@ -183,7 +183,7 @@ A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-u
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
-Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generic parameters ([?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)).
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generic parameters ([?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)). Delegation item cannot introduce its own transformations for arguments or return values ([?](#why-cannot-delegation-item-introduce-its-own-transformations-for-arguments-or-return-values)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -194,6 +194,7 @@ _See the following sections for rationale/alternatives_:
 - [Why is glob delegation supported?](#why-is-glob-delegation-supported)
 - [Why is renaming supported?](#why-is-renaming-supported)
 - [Why cannot delegation item introduce its own generic parameters?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)
+- [Why cannot delegation item introduce its own transformations for arguments or return values?](#why-cannot-delegation-item-introduce-its-own-transformations-for-arguments-or-return-values)
 
 _See the following sections for unresolved questions_:
 
@@ -235,6 +236,8 @@ _See the following sections for rationale/alternatives_:
 ### Paths and name resolution
 
 Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)).
+
+TODO: recursive delegation
 
 > [!NOTE]
 >
@@ -576,6 +579,18 @@ pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
 ```
 
 n principle, we could support this delegation pattern with syntax such as `reuse<T: ConvertVec, A: Allocator> T::to_vec;`. However, this would exceed our syntax budget(See [_guiding principles_](#design-guiding-principles)).
+
+↩ [Reference-level explanation](#reference-level-explanation)
+
+#### Why cannot delegation item introduce its own transformations for arguments or return values?
+
+TODO: add examples from previous RFCs
+
+Complex post-processing of the returned value is not supported as it needs something like an output post-processing closure, which doesn't fit into the syntax budget (See [_guiding principles_](#design-guiding-principles)).
+
+Complex pre-processing of non-first arguments is not supported as it needs something like argument pre-processing closures, which doesn't fit into the syntax budget (See [_guiding principles_](#design-guiding-principles)).
+
+TODO: these transformations require writing the signature manually which can be done with `delegate` crate.
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
