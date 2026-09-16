@@ -39,7 +39,7 @@ pub(vis) use prefix::{a, b, c as d};
 pub(vis) reuse prefix::{a, b, c as d} { target_expr }
 ```
 
-The motivation here is to avoid more complex features such as argument or return-value transformations, which would require pre- or post-processing closures. In such cases, the delegation item becomes less readable and more akin to a regular function call. These transformations can instead be written manually or expressed using a macro (See [Prior art](#prior-art)).
+The motivation here is to avoid more complex features such as argument or return-value transformations, which would require pre- or post-processing closures. In such cases, the delegation item becomes less readable and more akin to a regular function call. These transformations can instead be written manually or expressed using a macro (See [_Prior art_](#prior-art)).
 
 ### Rule №2: prefer generality over special casing
 
@@ -57,7 +57,7 @@ Many of the examples in this proposal can be tried on nightly Rust. However the 
 
 ## How to read this RFC
 
-TODO: links to rational/external/other sections </br>
+TODO: links to rational [?]()/other sections [_text_]()/external  [text](). Check links to RFCs</br>
 TODO: notes to implementation experience, other notes </br>
 TODO: examples </br>
 TODO: note that doc format was taken from another rfc/create something else
@@ -80,7 +80,7 @@ impl<T: Hash, A: Allocator + Clone> Hash for BTreeSet<T, A> {
 
 The is simply forwards a method call to a field. In practice the required repetition may even discourage the use of newtypes despite their advantages for type safety and abstraction. This situation highlights a gap in Rust’s ergonomics. While Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
-This limitation has long been recognized by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), a multiple discussions, and several macro crates ([delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador) are most popular amongst them). See [Prior art](#prior-art) for a full discussion of these efforts.
+This limitation has long been recognized by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), a multiple discussions, and several macro crates ([delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador) are most popular amongst them). See [_Prior art_](#prior-art) for a discussion of these efforts.
 
 This proposal revisits delegation.
 
@@ -177,11 +177,13 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a path, which may be either simple or qualified, followed by an optional block expression.
+A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-used)) and consists of
+- a path, which may be either simple or qualified. See the following [_Paths and name resolution_](#paths-and-name-resolution) section for a discussion of the rules and implementation details associated with name resolution.
+- an optional block expression. See the following [_Target expression_](#target-expression) section for detailed discussion of the rules associated with it.
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
-Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)).
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generic parameters ([?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -191,6 +193,7 @@ _See the following sections for rationale/alternatives_:
 - [Why is list delegation supported?](#why-is-list-delegation-supported)
 - [Why is glob delegation supported?](#why-is-glob-delegation-supported)
 - [Why is renaming supported?](#why-is-renaming-supported)
+- [Why cannot delegation item introduce its own generic parameters?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)
 
 _See the following sections for unresolved questions_:
 
@@ -204,7 +207,7 @@ _See the following sections for future possibilities_:
 
 ### Desugaring of individual delegation
 
-Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is inherited the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [Paths and name resolution](#paths-and-name-resolution) for details on how the path is resolved).
+Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is inherited the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [_Paths and name resolution_](#paths-and-name-resolution) for details on how the path is resolved).
 
 The generated function body for an individual delegation have the form:
 
@@ -219,7 +222,7 @@ pub(vis) FunctionQualifiers fn name(arg0: Arg0, arg1: Arg1, ..., argN: ArgN) {
 - Visibility `(pub(vis))` is exactly as specified by the user at the delegation site.
 - Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
-- `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature. (See [glob](#glob-delegation) and [list](#list-delegation) delegation)
+- `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature. (See [_glob_](#glob-delegation) and [_list_](#list-delegation) delegation)
 - TODO: generics, predicates
 - TODO: when target expression contains several statements
 - TODO: generics propagation in paths
@@ -393,7 +396,7 @@ All these combinations appear in real world code via regular calls and each repr
 Generality is particularly relevant in light of the existing prior art. The two previous delegation RFCs, [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), deliberately limited delegation to trait methods. Other proposals like [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) and [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) address other use cases through different language mechanisms.
 
 
-For the callee resolution to any variant is permitted as established in the name resolution section ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). For the caller we see no reason to restrict (also see [guiding principles](#design-guiding-principles)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
+For the callee resolution to any variant is permitted as established in the name resolution section ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). For the caller we see no reason to restrict (also see [_guiding principles_](#design-guiding-principles)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
 
 _See the following sections for rational/alternatives_:
 
@@ -466,7 +469,7 @@ Allowing `Self` in delegation paths makes this possible:
 impl Trait for Outer { reuse <Inner as Trait>::foo; } // OK
 ```
 
-Therefore, delegation paths should permit `Self` type for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [guiding principles](#design-guiding-principles)).
+Therefore, delegation paths should permit `Self` type for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [_guiding principles_](#design-guiding-principles)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -506,7 +509,7 @@ Allowing generic arguments in delegation paths makes this possible:
 impl<T> Trait<T> for Outer { reuse Trait::<()>::foo { self.0 } } // OK
 ```
 
-Therefore, delegation paths should permit generic arguments for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [guiding principles](#design-guiding-principles)).
+Therefore, delegation paths should permit generic arguments for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [_guiding principles_](#design-guiding-principles)).
 
 TODO: part 4 - type bindings
 
@@ -559,6 +562,20 @@ Delegation item is a distinct item that may deliberately want different behavior
 _See the following sections for unresolved questions_:
 
 - [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
+
+↩ [Reference-level explanation](#reference-level-explanation)
+
+#### Why cannot delegation item introduce its own generic parameters?
+
+Consider the example:
+
+```rust
+pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
+    T::to_vec(s, alloc)
+}
+```
+
+n principle, we could support this delegation pattern with syntax such as `reuse<T: ConvertVec, A: Allocator> T::to_vec;`. However, this would exceed our syntax budget(See [_guiding principles_](#design-guiding-principles)).
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -646,7 +663,7 @@ The `;` form is effectively an alias for `{ self }`, providing a more ergonomic 
 
 #### Why target expression is not restricted?
 
-In the feedback to the [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) it was suggested that delegation be limited to fields. This suggestion was adopted in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [guiding principles](#design-guiding-principles).
+In the feedback to the [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) it was suggested that delegation be limited to fields. This suggestion was adopted in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
 
 ↩ [Target expression](#target-expression)
 
@@ -662,7 +679,7 @@ TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/t
 
 #### Macros
 
-See [Prior art](#prior-art) for a closer look at the two most widely used crates for this, [delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador).
+See [_Prior art_](#prior-art) for a closer look at the two most widely used crates for this, [delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador).
 
 Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: macros do not have access to type information such as the callee's resolved signature or the methods of a trait.
 
