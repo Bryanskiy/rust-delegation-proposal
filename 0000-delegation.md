@@ -212,21 +212,29 @@ Individual delegation is the simplest case: it declares exactly one new item tha
 
 The generated function body for an individual delegation have the form:
 
-```rust
+```
 #[attrs]
-pub(vis) FunctionQualifiers fn name(arg0: Arg0, arg1: Arg1, ..., argN: ArgN) {
-    path(ADJ(target_expr(arg0)), arg1, ..., argN)
+pub(vis) FunctionQualifiers fn name<GenericParams>(..., argN: ArgN, ...) FunctionReturnType
+WhereClause
+{
+    #![attrs]
+    target_expr_stmt_1;
+    ....
+    target_expr_stmt_n;
+    path(..., ADJ(target_expr_operand(argN)), ...)
 }
 ```
 
-- Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site plus default attributes.
+- Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site, if any, plus default attributes.
+- Inner attributes (`#![attrs]`) are exactly those specified by the user inside target expression, if any.
 - Visibility `(pub(vis))` is exactly as specified by the user at the delegation site.
 - Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
+- Generic parameters(`GenericParams`) and predicates(`WhereClause`) are inherited from the delegation resolution with respect to provided generic arguments in callee path. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
 - `ADJ` denotes the same receiver adjustments as an ordinary [method call expression](https://doc.rust-lang.org/reference/expressions/method-call-expr.html): a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the argument to make it match the callee's signature. (See [_glob_](#glob-delegation) and [_list_](#list-delegation) delegation)
-- TODO: generics, predicates
 - TODO: when target expression contains several statements
 - TODO: generics propagation in paths
+- TODO: to which arguments `target_expr_operand` is applied
 
 _See the following sections for rationale/alternatives_:
 
@@ -258,6 +266,10 @@ _See the following sections for rationale/alternatives_:
 
 - [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
 - [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
+
+### Generics and predicates remapping
+
+TODO
 
 ### Target expression
 
