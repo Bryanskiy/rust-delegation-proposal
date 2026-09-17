@@ -157,7 +157,7 @@ A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-u
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
-Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generic parameters ([?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generic parameters and predicates ([?](#why-cannot-delegation-item-introduce-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -167,7 +167,7 @@ _See the following sections for rationale/alternatives_:
 - [Why is list delegation supported?](#why-is-list-delegation-supported)
 - [Why is glob delegation supported?](#why-is-glob-delegation-supported)
 - [Why is renaming supported?](#why-is-renaming-supported)
-- [Why cannot delegation item introduce its own generic parameters?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)
+- [Why cannot delegation item introduce its own generics??](#why-cannot-delegation-item-introduce-its-own-generics)
 - [Why doesn't a delegation item provide syntax for arguments or return value transformations?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)
 
 _See the following sections for unresolved questions_:
@@ -243,6 +243,23 @@ _See the following sections for rationale/alternatives_:
 - [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 
 ### Generics and predicates remapping
+
+As mentioned earlier, a delegation item does not introduce its own generics. Instead, they are inherited from the delegation resolution. Determining the resulting generics requires accounting for:
+- generics of the delegation item's parent context, if any
+- generics of the delegation resolution's parent context, if any
+- delegation resolution's own generics, if any
+- generic arguments explicitly provided in the path, if any
+
+This section defines the procedure for mapping these parameters and arguments to the generated delegation item.
+
+_Step 1._ Make a syntactically equivalent copy of list of generic parameters and predicates. By "syntactically equivalent" we mean here up to the generic parameters renaming.
+
+TODO: explain what renaming means <br>
+TODO
+
+_Step 2._ Next we have to make a substitution of user provided information which is a list of generic arguments from a path. TODO: and associated type bindings.
+
+_Step 3._
 
 TODO
 
@@ -585,7 +602,7 @@ _See the following sections for unresolved questions_:
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
-#### Why cannot delegation item introduce its own generic parameters?
+#### Why cannot delegation item introduce its own generics?
 
 Consider the example:
 
