@@ -55,6 +55,8 @@ This RFC draws on the experimental implementation tracked in [rust-lang/rust#118
 
 Many of the examples in this proposal can be tried on nightly Rust. However the implementation is still incomplete, contains some questionable design decisions and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
 
+TODO: 2 section:  we have parts that we are sure, we have parts that we implemented in some way, but very questionable. Somehow tell about this.
+
 ## How to read this RFC
 
 TODO: links to rational [?]()/other sections [_text_]()/external  [text](). Check links to RFCs</br>
@@ -592,7 +594,7 @@ pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
 }
 ```
 
-n principle, we could support this delegation pattern with syntax such as `reuse<T: ConvertVec, A: Allocator> T::to_vec;`. However, this would exceed our syntax budget(See [_guiding principles_](#design-guiding-principles)).
+In principle, we could support this delegation pattern with syntax such as `reuse<T: ConvertVec, A: Allocator> T::to_vec;`. However, this would exceed our syntax budget(See [_guiding principles_](#design-guiding-principles)).
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -684,7 +686,24 @@ TODO
 
 #### Why are statements not passed to the call?
 
-TODO
+Suppose we have a delegation item:
+
+```rust
+reuse path::name { let x = something; self.get(x) }
+```
+
+Two possible options to generate call are as follows:
+- pass the block expression unchanged:
+  ```rust
+  path::name(..., { let x = something; self.get(x) }, ...,)
+  ```
+- hoist the statements out of the block:
+  ```rust
+  let x = something;
+  path::name(..., self.get(x), ...,)
+  ```
+
+TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600)
 
 ↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
 
