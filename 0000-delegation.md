@@ -183,7 +183,7 @@ A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-u
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
-Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generic parameters ([?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)). Delegation item cannot introduce its own transformations for arguments or return values ([?](#why-cannot-delegation-item-introduce-its-own-transformations-for-arguments-or-return-values)).
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generic parameters ([?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -194,7 +194,7 @@ _See the following sections for rationale/alternatives_:
 - [Why is glob delegation supported?](#why-is-glob-delegation-supported)
 - [Why is renaming supported?](#why-is-renaming-supported)
 - [Why cannot delegation item introduce its own generic parameters?](#why-cannot-delegation-item-introduce-its-own-generic-parameters)
-- [Why cannot delegation item introduce its own transformations for arguments or return values?](#why-cannot-delegation-item-introduce-its-own-transformations-for-arguments-or-return-values)
+- [Why doesn't a delegation item provide syntax for arguments or return value transformations?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)
 
 _See the following sections for unresolved questions_:
 
@@ -231,7 +231,7 @@ WhereClause
 - Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
 - Generic parameters(`GenericParams`) and predicates(`WhereClause`) are inherited from the delegation resolution with respect to provided generic arguments in callee path. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
-- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the target expression is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, this is the method receiver.
+- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
 - `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature (See [_Glob delegation_](#glob-delegation) and [_List delegation_](#list-delegation) for rationale).
 - The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
 
@@ -277,7 +277,7 @@ TODO
 The target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that transforms the delegation item's first argument before that argument is forwarded to the resolved callee. When no block is given the first argument is passed through unchanged ([?](#why-can-the-block-expression-be-omitted)). There are no restrictions on the expressions that can be used inside the target expression ([?](#why-target-expression-is-not-restricted)).
 
 
-Inside that block, `self` refers to TODO
+Inside that block, `self` refers to TODO <br>
 TODO: `self` only in the final expression? Prohibited in statements.
 
 _See the following sections for rational/alternatives:_
@@ -596,15 +596,13 @@ n principle, we could support this delegation pattern with syntax such as `reuse
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
-#### Why cannot delegation item introduce its own transformations for arguments or return values?
+#### Why doesn't a delegation item provide syntax for arguments or return value transformations?
 
-TODO: add examples from previous RFCs
+There are several transformations one might reasonably want from the delegation feature:
+- Return value: converting the callee's return type with `.into()`, unwrapping a `Result`/`Option` with `.unwrap()`,  awaiting a future the callee returns with `.await`. e.t.c.
+- Input arguments: reordering arguments or calling a method like `.as_ref()`, e.t.c.
 
-Complex post-processing of the returned value is not supported as it needs something like an output post-processing closure, which doesn't fit into the syntax budget (See [_guiding principles_](#design-guiding-principles)).
-
-Complex pre-processing of non-first arguments is not supported as it needs something like argument pre-processing closures, which doesn't fit into the syntax budget (See [_guiding principles_](#design-guiding-principles)).
-
-TODO: these transformations require writing the signature manually which can be done with `delegate` crate.
+To support these transformations in their most general form, delegation items would need something closer to pre-processing and post-processing closures. We do not support these in the RFC, in accordance with our [_guiding principles_](#design-guiding-principles).
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
