@@ -157,7 +157,7 @@ A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-u
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
-Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generic parameters and predicates ([?](#why-cannot-delegation-item-introduce-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generics ([?](#why-cannot-delegation-item-introduce-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -205,12 +205,12 @@ WhereClause
 - Function qualifiers(`FunctionQualifiers`) are copied unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-copied-unchanged)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
 - Function arguments (e.g. `argN: ArgN`) are copied from the delegation resolution:
-  - Generic parameters in function arguments are renamed. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
+  - Generic parameters appearing in the function arguments are remapped as described in [_Generics remapping_](#Generics-remapping).
   - TODO: depending on `Self` type
 - Return type (`FunctionReturnType`) is copied from the delegation resolution:
-  - Generic parameters in return type are renamed. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
+  - Generic parameters appearing in the return type are remapped as described in [_Generics remapping_](#Generics-remapping).
   - TODO: depending on `Self` type
-- Generic parameters(`GenericParams`) and predicates(`WhereClause`) are copied from the delegation resolution with respect to provided generic arguments in callee path and renaming. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
+- Generic parameters(`GenericParams`) and where clause(`WhereClause`) are copied from the delegation resolution and remapped as described in [_Generics remapping_](#Generics-remapping).
 - The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
 - `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature (See [_Glob delegation_](#glob-delegation) and [_List delegation_](#list-delegation) for rationale).
 - The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
@@ -249,7 +249,7 @@ _See the following sections for rationale/alternatives_:
 - [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
 - [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 
-### Generics and predicates remapping
+### Generics remapping
 
 As mentioned earlier, a delegation item does not introduce its own generics. Instead, they are copied from the delegation resolution.
 
