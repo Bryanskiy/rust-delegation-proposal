@@ -19,7 +19,7 @@ The following terminology is frequently used in this proposal:
 - _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
 - _desugaring_ - the translation from a delegation item into regular function calls.
 - _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
-- _delegation resolution_ - a function from which the signature is inherited during desugaring.
+- _delegation resolution_ - a function from which the signature is copied during desugaring.
 
 ## How to read this RFC
 
@@ -135,7 +135,7 @@ Item →
 +     | Delegation
 ```
 
-Delegation items can be declared in any context where functions with bodies are permitted by the semantic rules. For example, delegation items cannot be declared inside an `extern` block. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)).
+Delegation items can be declared in any context where functions with bodies are permitted by the semantic rules. For example, delegation items cannot be declared inside an `extern` block. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)).
 
 The delegation item has the form:
 ```diff
@@ -162,8 +162,8 @@ Delegation of types and constants is not currently supported ([?](#support-deleg
 _See the following sections for rationale/alternatives_:
 
 - [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
-- [Why is visibility manually added instead of being inherited from the callee?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)
-- [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
+- [Why is visibility manually added instead of being copied from the callee?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)
+- [Why are attributes manually added instead of being copied from the callee?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)
 - [Why is list delegation supported?](#why-is-list-delegation-supported)
 - [Why is glob delegation supported?](#why-is-glob-delegation-supported)
 - [Why is renaming supported?](#why-is-renaming-supported)
@@ -182,7 +182,7 @@ _See the following sections for future possibilities_:
 
 ### Desugaring of individual delegation
 
-Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is inherited the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [_Paths and name resolution_](#paths-and-name-resolution) for details on how the path is resolved).
+Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is copied the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [_Paths and name resolution_](#paths-and-name-resolution) for details on how the path is resolved).
 
 The generated function body for an individual delegation have the form:
 
@@ -200,19 +200,26 @@ WhereClause
 ```
 
 - Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site, if any, plus default attributes.
-- Inner attributes (`#![attrs]`) are exactly those specified by the user inside target expression, if any.
+- Inner attributes (`#![attrs]`) are exactly those specified by the user inside target expression, if any. TODO: or, if prohibited, move to rationale
 - Visibility `(pub(vis))` is exactly as specified by the user at the delegation site.
-- Function qualifiers(`FunctionQualifiers`) are inherited unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-inherited-unchanged)).
+- Function qualifiers(`FunctionQualifiers`) are copied unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-copied-unchanged)).
 - The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
-- Generic parameters(`GenericParams`) and predicates(`WhereClause`) are inherited from the delegation resolution with respect to provided generic arguments in callee path. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
+- Function arguments (e.g. `argN: ArgN`) are copied from the delegation resolution:
+  - Generic parameters in function arguments are renamed. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
+  - TODO: depending on `Self` type
+- Return type (`FunctionReturnType`) is copied from the delegation resolution:
+  - Generic parameters in return type are renamed. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
+  - TODO: depending on `Self` type
+- Generic parameters(`GenericParams`) and predicates(`WhereClause`) are copied from the delegation resolution with respect to provided generic arguments in callee path and renaming. This mechanism is described in the following section, [_Generics and predicates remapping_](#Generics-and-predicates-remapping).
 - The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
 - `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature (See [_Glob delegation_](#glob-delegation) and [_List delegation_](#list-delegation) for rationale).
 - The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
+- TODO: return value transformations
 
 _See the following sections for rationale/alternatives_:
 
 - [Why is the delegation resolution the trait being implemented in trait implementations?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)
-- [Why are function qualifiers inherited unchanged?](#why-are-function-qualifiers-inherited-unchanged)
+- [Why are function qualifiers copied unchanged?](#why-are-function-qualifiers-copied-unchanged)
 - [Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)
 - [Why are statements not passed to the call?](#why-are-statements-not-passed-to-the-call)
 
@@ -244,22 +251,17 @@ _See the following sections for rationale/alternatives_:
 
 ### Generics and predicates remapping
 
-As mentioned earlier, a delegation item does not introduce its own generics. Instead, they are inherited from the delegation resolution. Determining the resulting generics requires accounting for:
+As mentioned earlier, a delegation item does not introduce its own generics. Instead, they are copied from the delegation resolution.
+
+TODO: why do we need renaming(remapping)
+
+Determining the resulting generics requires accounting for:
 - generics of the delegation item's parent context, if any
 - generics of the delegation resolution's parent context, if any
 - delegation resolution's own generics, if any
 - generic arguments explicitly provided in the path, if any
 
 This section defines the procedure for mapping these parameters and arguments to the generated delegation item.
-
-_Step 1._ Make a syntactically equivalent copy of list of generic parameters and predicates. By "syntactically equivalent" we mean here up to the generic parameters renaming.
-
-TODO: explain what renaming means <br>
-TODO
-
-_Step 2._ Next we have to make a substitution of user provided information which is a list of generic arguments from a path. TODO: and associated type bindings.
-
-_Step 3._
 
 TODO
 
@@ -586,13 +588,13 @@ If delegation item is in a trait implementation (e.g. `impl Trait for Type { /*d
         }
     }
     ```
-    Here, `run_lint` accepts `&Body<'tcx>`, while the trait method `run_pass` requires `&mut Body<'tcx>`. The delegation can work because `&mut T` can coerce to `&T`. However, if the generated function inherited its signature from the callee, `run_pass` would instead take `&Body<'tcx>`, violating the trait definition and resulting in a compilation error.
+    Here, `run_lint` accepts `&Body<'tcx>`, while the trait method `run_pass` requires `&mut Body<'tcx>`. The delegation can work because `&mut T` can coerce to `&T`. However, if the generated function copied its signature from the callee, `run_pass` would instead take `&Body<'tcx>`, violating the trait definition and resulting in a compilation error.
 
 The `#[refine]` attribute proposed by RFC 3245 could potentially be used for changing the behavior from one to another. We suggest inheriting signatures from the trait by default.
 
 ↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
 
-#### Why is visibility manually added instead of being inherited from the callee?
+#### Why is visibility manually added instead of being copied from the callee?
 
 Delegation item is a distinct item that may deliberately want different behavior than its callee. This also avoids ambiguity for users about whether omitting a visibility modifier makes the delegation item private or causes it to inherit the callee's visibility.
 
@@ -626,7 +628,7 @@ To support these transformations in their most general form, delegation items wo
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
-#### Why are attributes manually added instead of being inherited from the callee?
+#### Why are attributes manually added instead of being copied from the callee?
 
 Attributes may affect diagnostics, linking, documentation, or the item's public API contract. Delegation item is a distinct item that may deliberately want different behavior than its callee. Auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
@@ -677,7 +679,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
-#### Why are function qualifiers inherited unchanged?
+#### Why are function qualifiers copied unchanged?
 
 The function header comprises qualifiers such as `const`, `async`, `unsafe`, `extern "ABI"`. The following alternatives exist:
 
@@ -1012,7 +1014,7 @@ Certain attributes may be reasonable to add or inherit from the callee by defaul
 >
 > There should also be a way to opt out of default attributes when they are not desired. For `#[inline]`, this may be done with `#[inline(never)]` on the delegation item, but the appropriate mechanism depends on the attribute, and some attributes may have no corresponding way to opt out.
 
-↩ [Why are attributes manually added instead of being inherited from the callee?](#why-are-attributes-manually-added-instead-of-being-inherited-from-the-callee)
+↩ [Why are attributes manually added instead of being copied from the callee?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)
 
 ### Should the visibility of the delegation item be restricted?
 
@@ -1033,7 +1035,7 @@ Taking this into consideration, several design choices are possible:
 
 We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee.
 
-↩ [Why is visibility manually added instead of being inherited from the callee?](#why-is-visibility-manually-added-instead-of-being-inherited-from-the-callee)
+↩ [Why is visibility manually added instead of being copied from the callee?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)
 
 ### What keyword should be used?
 
