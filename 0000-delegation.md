@@ -21,13 +21,6 @@ The following terminology is frequently used in this proposal:
 - _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
 - _delegation resolution_ - a function from which the signature is copied during desugaring.
 
-## How to read this RFC
-
-TODO: links to rational [?]()/other sections [_text_]()/external  [text](). Check links to RFCs</br>
-TODO: notes to implementation experience, other notes </br>
-TODO: examples </br>
-TODO: note that doc format was taken from another rfc/create something else
-
 ## Implementation experience
 
 This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
@@ -35,6 +28,19 @@ This RFC draws on the experimental implementation tracked in [rust-lang/rust#118
 Many of the examples in this proposal can be tried on nightly Rust. However the implementation is still incomplete, contains some questionable design decisions and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
 
 TODO: 2 section:  we have parts that we are sure, we have parts that we implemented in some way, but very questionable. Somehow tell about this.
+
+## How to read this RFC
+
+This RFC is quite long, and a few kinds of cross-reference recur throughout it, so it's worth spelling out the convention up front:
+
+- A ([?](#anchor)) link points to a rationale subsection under Rationale and alternatives explaining why a design decision was made the way it was. These are asides: skipping them costs nothing for understanding the feature itself, only the reasoning behind one specific choice.
+- A [_text in italics_](#anchor) link points to another section of the RFC: material the current paragraph depends on.
+- A plain [text](url) link points outside this RFC such as a pull request, issue, comment, crate, or page of the Rust reference.
+
+TODO: Check links</br>
+TODO: notes to implementation experience, other notes </br>
+TODO: examples </br>
+TODO: note that doc format was taken from another rfc/create something else
 
 ## Motivation
 
@@ -157,7 +163,7 @@ A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-u
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
-Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item cannot introduce its own generics ([?](#why-cannot-delegation-item-introduce-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -167,7 +173,7 @@ _See the following sections for rationale/alternatives_:
 - [Why is list delegation supported?](#why-is-list-delegation-supported)
 - [Why is glob delegation supported?](#why-is-glob-delegation-supported)
 - [Why is renaming supported?](#why-is-renaming-supported)
-- [Why cannot delegation item introduce its own generics??](#why-cannot-delegation-item-introduce-its-own-generics)
+- [Why doesn't a delegation item provide syntax for introducing its own generics?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)
 - [Why doesn't a delegation item provide syntax for arguments or return value transformations?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)
 
 _See the following sections for unresolved questions_:
@@ -183,6 +189,10 @@ _See the following sections for future possibilities_:
 ### Desugaring of individual delegation
 
 Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is copied the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [_Paths and name resolution_](#paths-and-name-resolution) for details on how the path is resolved).
+
+> [!NOTE]
+>
+> Desugaring happens mainly during [AST lowering](https://rustc-dev-guide.rust-lang.org/hir/lowering.html). This is because once [HIR](https://rustc-dev-guide.rust-lang.org/hir.html) construction is complete the crate becomes immutable and code modification is no longer possible at that stage.
 
 The generated function body for an individual delegation have the form:
 
@@ -302,7 +312,6 @@ TODO: problems with inherence
 
 1. Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
 2. The delegation feature could potentially be implemented as third-partly library with compile‑time [reflection](#reflection) (if and when that becomes available).
-3. Every new keyword and item is something newcomers have to learn, something maintainers have to keep implementing correctly, and something the wider tooling ecosystem, such as rustfmt, rust-analyzer and rustdoc has to account for.
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -604,7 +613,7 @@ _See the following sections for unresolved questions_:
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
-#### Why cannot delegation item introduce its own generics?
+#### Why doesn't a delegation item provide syntax for introducing its own generics?
 
 Consider the example:
 
@@ -700,7 +709,24 @@ The proposal chooses to inherit all function qualifiers from the callee unchange
 
 #### Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?
 
-TODO
+Suppose we have a delegation item:
+
+```rust
+fn foo<T>(x: i32) {}
+reuse foo as bar;
+```
+
+Two possible options to generate call are as follows:
+- propagate generic parameters to the call:
+  ```rust
+  fn bar<T>() { foo::<T>() } // Ok
+  ```
+- do not propagate generic parameters to the call:
+  ```rust
+  fn bar<T>() { foo() } // ERROR: type annotations needed
+  ```
+
+The first option should be chosen because otherwise the generated call may fail with a type inference error.
 
 ↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
 
@@ -1033,7 +1059,7 @@ Taking this into consideration, several design choices are possible:
 2.  The visibility of the generated function cannot exceed the visibility of the reused function. In other words, delegation may only preserve or reduce visibility, never increase it.
 3. Explicit visibility control by the user.
 
-We prefer to leave all control to the user while also adding a deny-by-default lint that prevents a generated function from having greater visibility than the callee.
+We prefer to leave all control to the user while also adding a lint that prevents a generated function from having greater visibility than the callee.
 
 ↩ [Why is visibility manually added instead of being copied from the callee?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)
 
