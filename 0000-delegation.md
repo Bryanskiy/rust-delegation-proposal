@@ -1036,9 +1036,7 @@ The questions below are not expected to block acceptance of this RFC. Each is ei
 
 Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute.
 
-> [!IMPORTANT]
->
-> There should also be a way to opt out of default attributes when they are not desired. For `#[inline]`, this may be done with `#[inline(never)]` on the delegation item, but the appropriate mechanism depends on the attribute, and some attributes may have no corresponding way to opt out.
+There should also be a way to opt out of default attributes when they are not desired. For `#[inline]`, this may be done with `#[inline(never)]` on the delegation item, but the appropriate mechanism depends on the attribute, and some attributes may have no corresponding way to opt out.
 
 ↩ [Why are attributes manually added instead of being copied from the callee?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)
 
