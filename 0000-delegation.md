@@ -825,7 +825,7 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 }
 ```
 
-Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`. `K` parameter defined in `BTreeMap` wasn't substituted, therefore there are several options we might try:
+Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`. `K` parameter defined in `BTreeMap` has not been substituted, so there are several options we could consider:
 
 1. Report an error.
 2. TODO: generate. Corner case: fn to trait method.
