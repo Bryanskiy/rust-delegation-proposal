@@ -264,12 +264,13 @@ As mentioned earlier, a delegation item does not introduce its own generic param
 The following procedure is used for remapping:
 
 1. TODO: substitution
-2. TODO: Error when ...
+2. If any undefined generic parameters remain in the signature or where-clauses after substitution, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
 3. Generated parameters are renamed to avoid colliding with generic parameters already in scope ([?](#why-are-generated-generic-parameters-renamed)).
 
 _See the following sections for rationale/alternatives_:
 
 - [Why is generic parameter remapping needed?](#why-is-generic-parameter-remapping-needed)
+- [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
 - [Why are generated generic parameters renamed?](#why-are-generated-generic-parameters-renamed)
 
 ### Target expression
@@ -799,6 +800,34 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 ```
 
 Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`. We cannot merely create a syntactically equivalent copy because `K` defined in `BTreeMap` must be remapped to `T` defined in `BTreeSet`.
+
+↩ [Generics remapping](#generics-remapping)
+
+#### What happens if undefined generic parameters remain after substitution?
+
+```rust
+impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
+    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    { /* impl */ }
+}
+...
+impl<T, A: AllocatorClone> BTreeSet<T, A> {
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        self.map.contains_key(value)
+    }
+}
+```
+
+Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`.
+
+TODO: continue
 
 ↩ [Generics remapping](#generics-remapping)
 
