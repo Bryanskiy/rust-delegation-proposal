@@ -235,13 +235,11 @@ _See the following sections for rationale/alternatives_:
 
 ### Paths and name resolution
 
-Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)).
-
-TODO: recursive delegation
+Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). They can also refer to other delegation items. If a cycle is encountered in the chain of recursive delegations, an error is reported.
 
 > [!NOTE]
 >
-> Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows(See [RFC 0132](https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md)):
+> Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows:
 > - a path to a free function (e.g., `module::func`).
 > - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
 > - a type-relative path (e.g., `<T>::default`);
@@ -250,9 +248,9 @@ TODO: recursive delegation
 >
 > TODO: continue
 
-callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+TODO(move this): callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
 
-Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
+TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
 
 _See the following sections for rationale/alternatives_:
 
@@ -261,19 +259,18 @@ _See the following sections for rationale/alternatives_:
 
 ### Generics remapping
 
-As mentioned earlier, a delegation item does not introduce its own generics. Instead, they are copied from the delegation resolution.
+As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to the delegation resolution ([?](#why-is-generic-parameter-remapping-needed)).
 
-TODO: why do we need renaming(remapping)
+The following procedure is used for remapping:
 
-Determining the resulting generics requires accounting for:
-- generics of the delegation item's parent context, if any
-- generics of the delegation resolution's parent context, if any
-- delegation resolution's own generics, if any
-- generic arguments explicitly provided in the path, if any
+1. TODO: substitution
+2. TODO: Error when ...
+3. Generated parameters are renamed to avoid colliding with generic parameters already in scope ([?](#why-are-generated-generic-parameters-renamed)).
 
-This section defines the procedure for mapping these parameters and arguments to the generated delegation item.
+_See the following sections for rationale/alternatives_:
 
-TODO
+- [Why is generic parameter remapping needed?](#why-is-generic-parameter-remapping-needed)
+- [Why are generated generic parameters renamed?](#why-are-generated-generic-parameters-renamed)
 
 ### Target expression
 
@@ -776,6 +773,40 @@ In the feedback to the [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) 
 TODO: find github issue
 
 ↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+
+#### Why is generic parameter remapping needed?
+
+We cannot simply copy the signature and where-clauses as-is:
+
+```rust
+impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
+    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    { /* impl */ }
+}
+...
+impl<T, A: AllocatorClone> BTreeSet<T, A> {
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        self.map.contains_key(value)
+    }
+}
+```
+
+Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`. We cannot merely create a syntactically equivalent copy because `K` defined in `BTreeMap` must be remapped to `T` defined in `BTreeSet`.
+
+↩ [Generics remapping](#generics-remapping)
+
+#### Why are generated generic parameters renamed?
+
+Even if compiler can treat them is different parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
+
+↩ [Generics remapping](#generics-remapping)
 
 ### Alternatives to this RFC
 
