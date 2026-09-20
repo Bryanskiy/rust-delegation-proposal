@@ -804,7 +804,7 @@ Suppose we replace the implementation of  `BTreeSet::contains` with delegation i
 
 #### Why are generated generic parameters renamed?
 
-Even if compiler can treat them is different parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
+Even if compiler can treat parameters with colliding names without breaking anything, it is still be better to do renaming for more understandable error messages.
 
 ↩ [Generics remapping](#generics-remapping)
 
