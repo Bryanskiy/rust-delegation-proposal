@@ -825,15 +825,17 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 }
 ```
 
-Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`.
+Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`. `K` parameter defined in `BTreeMap` wasn't substituted, therefore there are several options we might try:
 
-TODO: continue
+1. Report an error.
+2. TODO: generate. Corner case: fn to trait method.
+3. TODO: try to infer: header/target expression
 
 ↩ [Generics remapping](#generics-remapping)
 
 #### Why are generated generic parameters renamed?
 
-Even if compiler can treat parameters with colliding names without breaking anything, it is still be better to do renaming for more understandable error messages.
+Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
 
 ↩ [Generics remapping](#generics-remapping)
 
