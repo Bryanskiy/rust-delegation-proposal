@@ -856,7 +856,7 @@ See the following sections for future possibilities:
 
 #### What happens if undefined generic parameters remain after substitution? Part 2.
 
-If an undefined generic parameter remains in the signature or where-clauses after substitution, one possible alternative is to generate an additional generic parameter. This would usually not be useful, but there may be a few cases where it could be beneficial. Consider the example:
+If an undefined generic parameter remains in the signature or where-clauses after substitution, one possible alternative is to generate an additional generic parameter. This would usually not be useful, as type checking would likely fail anyway, but there may be a few cases where it could be beneficial. Consider the example:
 
 ```rust
 trait Ord: Eq + PartialOrd<Self> {
@@ -872,7 +872,7 @@ fn min<T: Ord + Sized>(v1: T, v2: T) -> T {
 }
 ```
 
-Traits include an implicit `Self` parameter that can, in principle, be modeled as a generic parameter `This: Trait`. If we allow coping parameters from parent context `min` implementation could be replaced with `reuse Ord::min;`. 
+Traits include an implicit `Self` parameter that can, in principle, be modeled as a generic parameter `This: Trait`. If we allow coping parameters from parent context `min` implementation could be replaced with `reuse Ord::min;`.
 
 ↩ [Generics remapping](#generics-remapping)
 
