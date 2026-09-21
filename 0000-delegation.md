@@ -828,8 +828,14 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`. `K` parameter defined in `BTreeMap` has not been substituted, so there are several options we could consider:
 
 1. Report an error.
-2. TODO: generate. Corner case: fn to trait method.
-3. TODO: try to infer: header/target expression
+2. We can try to infer from the given context:
+   1. From the target expression: `typeof(self.map) == BTreeMap::<T, ()>`
+
+      We would need to typecheck the function body before generating the full signature, which is not possible with the current compiler architecture. TODO: same problem as for inherent impls. Add link.
+
+   2. Compiler can use some sort of heuristic (e.g., positional 1:1 matching of parameters defined in the implementation header or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered or partially instantiated.
+
+3. TODO: generate. Corner case: fn to trait method.
 
 ↩ [Generics remapping](#generics-remapping)
 
