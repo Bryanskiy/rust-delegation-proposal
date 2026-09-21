@@ -837,6 +837,8 @@ Suppose we replace the implementation of  `BTreeSet::contains` with delegation i
 
 3. TODO: generate. Corner case: fn to trait method.
 
+In this proposal, we suggest using the “report an error” option because it is the most conservative approach and requires generic arguments to be specified explicitly. Once compiler architecture is advanced enough we can implement more sophisticated inference.
+
 ↩ [Generics remapping](#generics-remapping)
 
 #### Why are generated generic parameters renamed?
