@@ -841,6 +841,10 @@ In this proposal, we suggest using the “report an error” option because it i
 
 ↩ [Generics remapping](#generics-remapping)
 
+See the following sections for future possibilities:
+
+- [More sophisticated inference of generic parameters](#More-sophisticated-inference-of-generic-parameters)
+
 #### Why are generated generic parameters renamed?
 
 Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
@@ -1147,6 +1151,12 @@ Several extensions could be added on top of the core feature without changing it
 A shorter syntax that infers the callee from a bare method name could be layered on top of fully qualified paths.
 
 ↩ [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
+
+### More sophisticated inference of generic parameters
+
+We could implement a more advanced mechanism for inferring unsubstituted generic parameters, allowing users to specify fewer generic arguments explicitly.
+
+↩ [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
 
 ### Support delegating types and consts
 
