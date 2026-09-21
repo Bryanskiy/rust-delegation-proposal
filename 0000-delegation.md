@@ -833,9 +833,9 @@ Suppose we replace the implementation of  `BTreeSet::contains` with delegation i
 
       We would need to typecheck the function body before generating the full signature, which is not possible with the current compiler architecture. TODO: same problem as for inherent impls. Add link.
 
-   2. Compiler can use some sort of heuristic (e.g., positional 1:1 matching of parameters defined in the implementation header or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated or renamed.
+   2. Compiler can use some sort of heuristic to map substitute parameters defined in the implementation header (e.g., positional 1:1 matching or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated or renamed.
 
-3. TODO: We can generate new parameter(only for fn to trait method)
+3. TODO: We can generate new parameter. Usually it doesn't make much sense as we will fail during typeck, but there are a couple of cases where it might be useful. (only for fn to trait method)
 
 In this proposal, we suggest using the “report an error” option because it is the most conservative approach and requires generic arguments to be specified explicitly. Once compiler architecture is advanced enough we can implement more sophisticated inference.
 
