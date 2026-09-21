@@ -263,7 +263,11 @@ As mentioned earlier, a delegation item does not introduce its own generic param
 
 The following procedure is used for remapping:
 
-1. TODO: substitution
+1. First, generic parameters are substituted:
+   1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. TODO: why?
+   2. For other cases, using the generic arguments provided by the user in the callee path:
+      1. TODO: `_` + nested (`Vec<_>`)
+      2. TODO: substitution of parent/own segments
 2. If any undefined generic parameters remain in the signature or where-clauses after substitution, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
 3. Generated parameters are renamed to avoid colliding with generic parameters already in scope ([?](#why-are-generated-generic-parameters-renamed)).
 
@@ -833,7 +837,7 @@ Suppose we replace the implementation of  `BTreeSet::contains` with delegation i
 
       We would need to typecheck the function body before generating the full signature, which is not possible with the current compiler architecture. TODO: same problem as for inherent impls. Add link.
 
-   2. Compiler can use some sort of heuristic to map substitute parameters defined in the implementation header (e.g., positional 1:1 matching or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated or renamed.
+   2. Compiler can use some sort of heuristic to substitute parameters defined in the implementation header (e.g., positional 1:1 matching or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated or renamed.
 
 3. TODO: We can generate new parameter. Usually it doesn't make much sense as we will fail during typeck, but there are a couple of cases where it might be useful. (only for fn to trait method)
 
