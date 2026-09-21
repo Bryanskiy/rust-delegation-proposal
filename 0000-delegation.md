@@ -884,7 +884,7 @@ trait Trait<'a, A> {
 reuse Trait::foo;
 ```
 
-A conceptual desugaring with inherited type information might look like:
+A conceptual desugaring might look like:
 
 ```rust
 fn foo<'a, 'b, This, A, B>(this: &This, x: A, y: B)
