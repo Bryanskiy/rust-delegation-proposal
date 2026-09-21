@@ -264,11 +264,11 @@ As mentioned earlier, a delegation item does not introduce its own generic param
 The following procedure is used for remapping:
 
 1. First, generic parameters are substituted:
-   1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. TODO: why?
+   1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
    2. For other cases, using the generic arguments provided by the user in the callee path:
       1. TODO: `_` + nested (`Vec<_>`)
       2. TODO: substitution of parent/own segments
-2. If any undefined generic parameters remain in the signature or where-clauses after substitution, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
+2. If any undefined generic parameters remain in the signature or where-clauses after substitution, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)). TODO: definition for "undefined generics"
 3. Generated parameters are renamed to avoid colliding with generic parameters already in scope ([?](#why-are-generated-generic-parameters-renamed)).
 
 _See the following sections for rationale/alternatives_:
@@ -839,15 +839,42 @@ Suppose we replace the implementation of  `BTreeSet::contains` with delegation i
 
    2. Compiler can use some sort of heuristic to substitute parameters defined in the implementation header (e.g., positional 1:1 matching or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated or renamed.
 
-3. TODO: We can generate new parameter. Usually it doesn't make much sense as we will fail during typeck, but there are a couple of cases where it might be useful. (only for fn to trait method)
+3. We can generate new parameter. See [_part 2_](#what-happens-if-undefined-generic-parameters-remain-after-substitution-part-2).
 
 In this proposal, we suggest using the “report an error” option because it is the most conservative approach and requires generic arguments to be specified explicitly. Once compiler architecture is advanced enough we can implement more sophisticated inference.
 
-↩ [Generics remapping](#generics-remapping)
+_See the following sections for rationale/alternatives_:
+
+- [What happens if undefined generic parameters remain after substitution? Part 2.
+](#what-happens-if-undefined-generic-parameters-remain-after-substitution-part-2)
 
 See the following sections for future possibilities:
 
 - [More sophisticated inference of generic parameters](#More-sophisticated-inference-of-generic-parameters)
+
+↩ [Generics remapping](#generics-remapping)
+
+#### What happens if undefined generic parameters remain after substitution? Part 2.
+
+If an undefined generic parameter remains in the signature or where-clauses after substitution, one possible alternative is to generate an additional generic parameter. This would usually not be useful, but there may be a few cases where it could be beneficial. Consider the example:
+
+```rust
+trait Ord: Eq + PartialOrd<Self> {
+    fn min(self, other: Self) -> Self
+    where
+        Self: Sized {...}
+}
+
+...
+
+fn min<T: Ord + Sized>(v1: T, v2: T) -> T {
+     Ord::min(v1, v2)
+}
+```
+
+Traits include an implicit `Self` parameter that can, in principle, be modeled as a generic parameter `This: Trait`. If we allow coping parameters from parent context `min` implementation could be replaced with `reuse Ord::min;`. 
+
+↩ [Generics remapping](#generics-remapping)
 
 #### Why are generated generic parameters renamed?
 
