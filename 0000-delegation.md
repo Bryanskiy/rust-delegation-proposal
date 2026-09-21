@@ -856,7 +856,7 @@ See the following sections for future possibilities:
 
 #### What happens if undefined generic parameters remain after substitution? Part 2.
 
-If an undefined generic parameter remains in the signature or where-clauses after substitution, one possible alternative is to generate an additional generic parameter. This would usually not be useful, as type checking would likely fail anyway, but there may be a few cases where it could be beneficial. Consider the example:
+If an undefined generic parameter remains in the signature or where-clauses after substitution, one possible alternative is to generate an additional generic parameter. Consider the example:
 
 ```rust
 trait Ord: Eq + PartialOrd<Self> {
@@ -873,6 +873,31 @@ fn min<T: Ord + Sized>(v1: T, v2: T) -> T {
 ```
 
 Traits include an implicit `Self` parameter that can, in principle, be modeled as a generic parameter `This: Trait`. If we allow coping parameters from parent context `min` implementation could be replaced with `reuse Ord::min;`.
+
+This approach could be extended to other parameters as well:
+
+```rust
+trait Trait<'a, A> {
+    fn foo<'b, B>(&self, x: A, y: B) { ... }
+}
+
+reuse Trait::foo;
+```
+
+A conceptual desugaring with inherited type information might look like:
+
+```rust
+fn foo<'a, 'b, This, A, B>(this: &This, x: A, y: B)
+where
+    This: Trait<'a, A>,
+{
+    <This as Trait<'a, A>>::foo::<'b, B>(this, x, y)
+}
+```
+
+Note that Rust requires lifetime parameters to be declared before type and const parameters, which means copied generics may need to be reordered.
+
+We mention this as a possible extension of the approach, but we do not currently know of useful applications for it and therefore do not propose it as part of the main design.
 
 ↩ [Generics remapping](#generics-remapping)
 
