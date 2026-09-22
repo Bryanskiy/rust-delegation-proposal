@@ -269,13 +269,12 @@ The following procedure is used for remapping:
       1. TODO: `_` + nested (`Vec<_>`)
       2. TODO: substitution of parent/own segments
 2. If any undefined generic parameters remain in the signature or where-clauses after substitution, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)). TODO: definition for "undefined generics"
-3. Generated parameters are renamed to avoid colliding with generic parameters already in scope ([?](#why-are-generated-generic-parameters-renamed)).
+3. Generated parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
 
 _See the following sections for rationale/alternatives_:
 
 - [Why is generic parameter remapping needed?](#why-is-generic-parameter-remapping-needed)
 - [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
-- [Why are generated generic parameters renamed?](#why-are-generated-generic-parameters-renamed)
 
 ### Target expression
 
@@ -856,6 +855,10 @@ See the following sections for future possibilities:
 
 #### What happens if undefined generic parameters remain after substitution? Part 2.
 
+> [!WARNING]
+>
+> The idea below is weird, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating an unsubstituted parent parameter as an error ([_Part 1_](What-happens-if-undefined-generic-parameters-remain-after-substitution)) remains the better default.
+
 If an undefined generic parameter remains in the signature or where-clauses after substitution, one possible alternative is to generate an additional generic parameter. Consider the example:
 
 ```rust
@@ -874,11 +877,21 @@ fn min<T: Ord + Sized>(v1: T, v2: T) -> T {
 
 Traits include an implicit `Self` parameter that can, in principle, be modeled as a generic parameter `This: Trait`. If we allow coping parameters from parent context `min` implementation could be replaced with `reuse Ord::min;`.
 
-This approach could be extended to other parameters as well:
+in principle, this could extend beyond `Self` to any parent parameter, but doing so raises multiple questions:
+
+- Rust requires lifetime parameters to be declared before type and const parameters, which means copied generics may need to be reordered.
+- Default parameters are not permitted in functions. Therefore, either the default type must be used, or a new non-default parameter must be generated.
+- Bounds also need to be copied.
+
+<details>
+
+<summary> Example: copying of parent parameters.</summary>
 
 ```rust
-trait Trait<'a, A> {
-    fn foo<'b, B>(&self, x: A, y: B) { ... }
+trait Trait1 {}
+
+trait Trait<'a, A: Trait1, C = i32> {
+    fn foo<'b, B>(&self, x: A, y: B, c: C) { ... }
 }
 
 reuse Trait::foo;
@@ -887,23 +900,15 @@ reuse Trait::foo;
 A conceptual desugaring might look like:
 
 ```rust
-fn foo<'a, 'b, This, A, B>(this: &This, x: A, y: B)
+fn foo<'a, 'b, This, A: Trait1, B>(this: &This, x: A, y: B, c: i32)
 where
     This: Trait<'a, A>,
 {
-    <This as Trait<'a, A>>::foo::<'b, B>(this, x, y)
+    <This as Trait<'a, A>>::foo::<B>(this, x, y, c)
 }
 ```
 
-Note that Rust requires lifetime parameters to be declared before type and const parameters, which means copied generics may need to be reordered.
-
-We mention this as a possible extension of the approach, but we do not currently know of useful applications for it and therefore do not propose it as part of the main design.
-
-↩ [Generics remapping](#generics-remapping)
-
-#### Why are generated generic parameters renamed?
-
-Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
+</details>
 
 ↩ [Generics remapping](#generics-remapping)
 
