@@ -793,7 +793,48 @@ TODO: find github issue
 
 #### Why might `Self` type need to be substituted?
 
-TODO: `UnordItems` with iterator
+Consider the example:
+
+```rust
+trait Iterator {
+    fn any<F>(&mut self, f: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool,
+    { /* impl */ }
+    ...
+}
+...
+pub struct UnordItems<T, I: Iterator<Item = T>>(I);
+
+impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
+    reuse Iterator::any { self.0 }
+  ...
+}
+```
+
+Conceptually, the generated method would resemble:
+
+```rust
+impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
+    pub fn any<F: Fn(<?Self as Iterator>::Item) -> bool>(mut self, f: F) -> bool {
+        Iterator::any(&mut self.0)
+    }
+  ...
+}
+```
+
+Here, `Self::Item` defined in `Iterator` must be remapped to `T` defined in `UnordItems`.
+
+In the example above, `?Self` denotes a parameter that has been copied but not yet remapped. Inferring this parameter from the context is not yet supported ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)). Therefore the parameter must be explicitly substituted through the path:
+
+```rust
+reuse <I as Iterator>::any { self.0 }
+```
+
+_See the following sections for rationale/alternatives_:
+
+- [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
 
 ↩ [Generics remapping](#generics-remapping)
 
