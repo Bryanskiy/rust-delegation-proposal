@@ -799,6 +799,8 @@ TODO: `UnordItems` with iterator
 
 #### Why might parent parameters need to be substituted?
 
+Consider the example:
+
 ```rust
 impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
@@ -819,7 +821,7 @@ Conceptually, the generated method would resemble:
 impl<T, A: AllocatorClone> BTreeSet<T, A> {
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
-        /* ??? */: Borrow<Q> + Ord,
+        ?K: Borrow<Q> + Ord,
         Q: Ord,
     {
         BTreeMap::contains_key(&self.map, value)
@@ -829,7 +831,11 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 
 Here, `Q` can be copied directly because it is an own parameter of `BTreeMap::contains_key`. But `K` defined in `BTreeMap` must be remapped to `T` defined in `BTreeSet`.
 
-TODO: continue
+In the example above, `?K` denotes a parameter that has been copied but not yet remapped. Inferring this parameter from the context is not yet supported ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)). Therefore the parameter must be explicitly substituted through the path:
+
+```rust
+reuse BTreeMap::<T, A>::contains_key as contains { self.map }
+```
 
 ↩ [Generics remapping](#generics-remapping)
 
