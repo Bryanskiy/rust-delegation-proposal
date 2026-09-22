@@ -819,13 +819,29 @@ Here, `Q` can be copied directly because it is an own parameter of `BTreeMap::co
 
 #### Why inference variables are allowed in paths?
 
+TODO: partial generics substitution if substituting last segment is allowed. <br>
 TODO
 
 ↩ [Generics remapping](#generics-remapping)
 
 #### Why nested inference variables are not allowed in paths?
 
-TODO
+> [!WARNING]
+>
+> The idea below is weird, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating a nested infer as an error remains the better default.
+
+Delegation could be made to work with nested infers(e.g. `Vec<_>`) by generating new parameters for each infer:
+```rust
+ fn foo<T>(x: T) {}
+ reuse foo::<HashMap::<_, _>>;
+```
+
+could desugar into:
+```rust
+fn bar<A, B>(x: HashMap<A, B>) {
+    foo::<HashMap::<_, _>>(x)
+}
+```
 
 ↩ [Generics remapping](#generics-remapping)
 
