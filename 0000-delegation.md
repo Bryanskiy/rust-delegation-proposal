@@ -259,18 +259,22 @@ _See the following sections for rationale/alternatives_:
 
 ### Generics remapping
 
-As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to the delegation resolution ([?](#why-is-generic-parameter-remapping-needed)).
+TODO: how it's related with `Self ` type mapping? `Self ` type mapping + `Type` in `<Type as Trait>`?
+
+As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to what would be written by hand. ([?](#why-is-generic-parameter-remapping-needed)).
 
 The following procedure is used for remapping:
 
 1. First, generic parameters are substituted to the signature and where-clauses:
    1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
    2. For other cases, using the generic arguments provided by the user in the callee path:
-      1. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a copied parameter should be used ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
-      2. TODO: substitution of `Self`/parent/own segments: last segments can't substitute late bound parameters
-      3. When no argument is specified it is treated as `_` was substituted.
-2. If any undefined generic parameters remain in the signature or where-clauses after substitution, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)). TODO: definition for "undefined generics"
-3. Generated parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
+      1. Generic arguments can be used in `Self` type to substitute delegation resolution's `Self` type.
+      2. Generic arguments can be used in parent segment to substitute delegation resolution's parent generics.
+      3. Generic arguments can be used in child segment to substitute delegation resolution's own generics.
+      4. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a parameter should not be substituted. ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
+      5. When no argument is specified it is treated as `_` was written.
+2. If any non-own parameters remain unsubstituted in the signature or where-clauses, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
+3. Copied parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
 
 _See the following sections for rationale/alternatives_:
 
@@ -820,7 +824,7 @@ Here, `Q` can be copied directly because it is an own parameter of `BTreeMap::co
 #### Why inference variables are allowed in paths?
 
 TODO: partial generics substitution if substituting last segment is allowed. <br>
-TODO
+TODO: if a parameter isn't present there is nothing to substitute and we can omit writing the whole name i.e. sugar
 
 ↩ [Generics remapping](#generics-remapping)
 
