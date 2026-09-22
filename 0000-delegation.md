@@ -261,24 +261,30 @@ _See the following sections for rationale/alternatives_:
 
 TODO: how it's related with `Self ` type mapping? `Self ` type mapping + `Type` in `<Type as Trait>`?
 
-As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to what would be written by hand. ([?](#why-is-generic-parameter-remapping-needed)).
+As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to what would be written by hand.
+
+TODO: a couple of words for motivation. Should be clear from rationale links.
 
 The following procedure is used for remapping:
 
 1. First, generic parameters are substituted to the signature and where-clauses:
    1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
    2. For other cases, using the generic arguments provided by the user in the callee path:
-      1. Generic arguments can be used in `Self` type to substitute delegation resolution's `Self` type.
-      2. Generic arguments can be used in parent segment to substitute delegation resolution's parent generics.
-      3. Generic arguments can be used in child segment to substitute delegation resolution's own generics.
+      1. `Self` type in the path is used to substitute the delegation resolution's `Self` type ([?](#why-might-self-type-need-to-be-substituted)).
+      2. Generic arguments in the parent segment are used to substitute delegation resolution's parent parameters ([?](#why-might-parent-parameters-need-to-be-substituted)).
+      3. Generic arguments child segment are used to substitute delegation resolution's own parameters ([?](#why-might-child-parameters-need-to-be-substituted)).
       4. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a parameter should not be substituted. ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
       5. When no argument is specified it is treated as `_` was written.
-2. If any non-own parameters remain unsubstituted in the signature or where-clauses, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
+2. If any non-own parameters in the signature or where-clauses remain unsubstituted, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
 3. Copied parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
+
+TODO: examples?
 
 _See the following sections for rationale/alternatives_:
 
-- [Why is generic parameter remapping needed?](#why-is-generic-parameter-remapping-needed)
+- [Why might `Self` type need to be substituted?](#why-might-self-type-need-to-be-substituted)
+- [Why might parent parameters need to be substituted?](#why-might-parent-parameters-need-to-be-substituted)
+- [Why might child parameters need to be substituted?](#why-might-child-parameters-need-to-be-substituted)
 - [Why inference variables are allowed in paths?](#why-inference-variables-are-allowed-in-paths)
 - [Why nested inference variables are not allowed in paths?](#why-nested-inference-variables-are-not-allowed-in-paths)
 - [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
@@ -785,9 +791,13 @@ TODO: find github issue
 
 ↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
 
-#### Why is generic parameter remapping needed?
+#### Why might `Self` type need to be substituted?
 
-We cannot simply copy the signature and where-clauses as-is:
+TODO: `UnordItems` with iterator
+
+↩ [Generics remapping](#generics-remapping)
+
+#### Why might parent parameters need to be substituted?
 
 ```rust
 impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
@@ -818,6 +828,14 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 ```
 
 Here, `Q` can be copied directly because it is an own parameter of `BTreeMap::contains_key`. But `K` defined in `BTreeMap` must be remapped to `T` defined in `BTreeSet`.
+
+TODO: continue
+
+↩ [Generics remapping](#generics-remapping)
+
+#### Why might child parameters need to be substituted?
+
+TODO
 
 ↩ [Generics remapping](#generics-remapping)
 
