@@ -837,6 +837,10 @@ In the example above, `?K` denotes a parameter that has been copied but not yet 
 reuse BTreeMap::<T, A>::contains_key as contains { self.map }
 ```
 
+_See the following sections for rationale/alternatives_:
+
+- [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
+
 ↩ [Generics remapping](#generics-remapping)
 
 #### Why might child parameters need to be substituted?
