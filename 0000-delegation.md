@@ -263,17 +263,20 @@ As mentioned earlier, a delegation item does not introduce its own generic param
 
 The following procedure is used for remapping:
 
-1. First, generic parameters are substituted:
+1. First, generic parameters are substituted to the signature and where-clauses:
    1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
    2. For other cases, using the generic arguments provided by the user in the callee path:
-      1. TODO: `_` + nested (`Vec<_>`)
-      2. TODO: substitution of parent/own segments
+      1. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a copied parameter should be used ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
+      2. TODO: substitution of `Self`/parent/own segments: last segments can't substitute late bound parameters
+      3. When no argument is specified it is treated as `_` was substituted.
 2. If any undefined generic parameters remain in the signature or where-clauses after substitution, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)). TODO: definition for "undefined generics"
 3. Generated parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
 
 _See the following sections for rationale/alternatives_:
 
 - [Why is generic parameter remapping needed?](#why-is-generic-parameter-remapping-needed)
+- [Why inference variables are allowed in paths?](#why-inference-variables-are-allowed-in-paths)
+- [Why nested inference variables are not allowed in paths?](#why-nested-inference-variables-are-not-allowed-in-paths)
 - [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
 
 ### Target expression
@@ -792,19 +795,40 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
 }
 ...
 impl<T, A: AllocatorClone> BTreeSet<T, A> {
+    reuse BTreeMap::contains_key as contains { self.map }
+}
+```
+
+Conceptually, the generated method would resemble:
+
+```rust
+impl<T, A: AllocatorClone> BTreeSet<T, A> {
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
-        T: Borrow<Q> + Ord,
+        /* ??? */: Borrow<Q> + Ord,
         Q: Ord,
     {
-        self.map.contains_key(value)
+        BTreeMap::contains_key(&self.map, value)
     }
 }
 ```
 
-Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`. We cannot merely create a syntactically equivalent copy because `K` defined in `BTreeMap` must be remapped to `T` defined in `BTreeSet`.
+Here, `Q` can be copied directly because it is an own parameter of `BTreeMap::contains_key`. But `K` defined in `BTreeMap` must be remapped to `T` defined in `BTreeSet`.
 
 ↩ [Generics remapping](#generics-remapping)
+
+#### Why inference variables are allowed in paths?
+
+TODO
+
+↩ [Generics remapping](#generics-remapping)
+
+#### Why nested inference variables are not allowed in paths?
+
+TODO
+
+↩ [Generics remapping](#generics-remapping)
+
 
 #### What happens if undefined generic parameters remain after substitution?
 
