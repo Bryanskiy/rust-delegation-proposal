@@ -921,6 +921,8 @@ fn bar<A, B>(x: HashMap<A, B>) {
 
 #### What happens if undefined generic parameters remain after substitution?
 
+Consider the example:
+
 ```rust
 impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
@@ -931,17 +933,25 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
 }
 ...
 impl<T, A: AllocatorClone> BTreeSet<T, A> {
+    reuse BTreeMap::contains_key as contains { self.map }
+}
+```
+
+`K` parameter defined in `BTreeMap` has not been substituted with `T` parameter defined in `BTreeSet`, so the generated method:
+
+```rust
+impl<T, A: AllocatorClone> BTreeSet<T, A> {
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
-        T: Borrow<Q> + Ord,
+        ?K: Borrow<Q> + Ord,
         Q: Ord,
     {
-        self.map.contains_key(value)
+        BTreeMap::contains_key(&self.map, value)
     }
 }
 ```
 
-Suppose we replace the implementation of  `BTreeSet::contains` with delegation item `reuse BTreeMap::contains { self.map }`. `K` parameter defined in `BTreeMap` has not been substituted with `T` parameter defined in `BTreeSet`, so there are several options we could consider:
+Where `?K` denotes a parameter that has been copied but not remapped. There are several options we could consider:
 
 1. Report an error.
 2. We can try to infer from the given context:
