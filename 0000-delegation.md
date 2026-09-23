@@ -272,7 +272,7 @@ The following procedure is used for remapping:
       2. Generic arguments in the parent segment are used to substitute delegation resolution's parent parameters ([?](#why-might-parent-parameters-need-to-be-substituted)).
       3. Generic arguments child segment are used to substitute delegation resolution's own parameters ([?](#why-might-child-parameters-need-to-be-substituted)).
       4. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a parameter should not be substituted. ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
-      5. When no argument is specified it is treated as `_` was written.
+      5. When no argument is specified it is treated as `_`/`'_` was written.
 2. If any non-own parameters in the signature or where-clauses remain unsubstituted, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
 3. Copied parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
 
@@ -886,14 +886,25 @@ pub const fn largest_max_leb128_len() -> usize {
 }
 ```
 
-With the ability to provide generic args to own parameters `largest_max_leb128_len` implementation might be replace with `reuse max_leb128_len::<u128>` delegation item.
+With the ability to provide generic args to own parameters `largest_max_leb128_len` implementation might be replaced with `reuse max_leb128_len::<u128>` delegation item.
 
 ↩ [Generics remapping](#generics-remapping)
 
 #### Why inference variables are allowed in paths?
 
-TODO: partial generics substitution if substituting last segment is allowed. <br>
-TODO: if a parameter isn't present there is nothing to substitute and we can omit writing the whole name i.e. sugar
+1. If substitution of own parameters is allowed, infers can be used to substitute only a subset of the parameters:
+   ```rust
+   pub fn foo<T, U>(x: T, y: U) { /* impl */ }
+   reuse foo::<i32, _> as bar;
+   ```
+   this could desugar to:
+   ```rust
+   pub fn bar<U>(x: i32, y: U) {
+      foo(x, y)
+   }
+   ```
+
+2. If a parameter isn't present in the signature or where-clauses there is nothing to substitute and we can omit writing the whole name.
 
 ↩ [Generics remapping](#generics-remapping)
 
