@@ -261,9 +261,7 @@ _See the following sections for rationale/alternatives_:
 
 TODO: how it's related with `Self ` type mapping? `Self ` type mapping + `Type` in `<Type as Trait>`?
 
-As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to what would be written by hand.
-
-TODO: a couple of words for motivation. Should be clear from rationale links.
+As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to what would be written by hand (e.g. a callee's parent parameters don't automatically make sense once copied into a different scope).
 
 The following procedure is used for remapping:
 
@@ -878,7 +876,17 @@ reuse BTreeMap::<T, A>::contains_key as contains { self.map }
 
 #### Why might child parameters need to be substituted?
 
-TODO
+Consider the example:
+
+```rust
+pub const fn max_leb128_len<T>() -> usize { /* impl */ }
+
+pub const fn largest_max_leb128_len() -> usize {
+	max_leb128_len::<u128>()
+}
+```
+
+With the ability to provide generic args to own parameters `largest_max_leb128_len` implementation might be replace with `reuse max_leb128_len::<u128>` delegation item.
 
 ↩ [Generics remapping](#generics-remapping)
 
