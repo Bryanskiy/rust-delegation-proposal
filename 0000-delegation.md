@@ -813,7 +813,7 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
 }
 ```
 
-Conceptually, the generated method would resemble:
+The generated method:
 
 ```rust
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
@@ -824,17 +824,13 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
 }
 ```
 
-Here, `Self::Item` defined in `Iterator` must be remapped to `T` defined in `UnordItems`.
+Here, `F` can be copied directly because it is an own parameter of `Iterator::any`. But `Self` is an own parameter of `Iterator` trait and need to be remapped to `I` defined in `UnordItems` (We use `?Self` to denote a parameter that has been copied but not yet remapped).
 
-In the example above, `?Self` denotes a parameter that has been copied but not yet remapped. Inferring this parameter from the context is not yet supported ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)). Therefore the parameter must be explicitly substituted through the path:
+To make the example work the parameter can be explicitly substituted through the path:
 
 ```rust
 reuse <I as Iterator>::any { self.0 }
 ```
-
-_See the following sections for rationale/alternatives_:
-
-- [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
 
 ↩ [Generics remapping](#generics-remapping)
 
@@ -856,7 +852,7 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 }
 ```
 
-Conceptually, the generated method would resemble:
+The generated method:
 
 ```rust
 impl<T, A: AllocatorClone> BTreeSet<T, A> {
@@ -870,17 +866,13 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 }
 ```
 
-Here, `Q` can be copied directly because it is an own parameter of `BTreeMap::contains_key`. But `K` defined in `BTreeMap` must be remapped to `T` defined in `BTreeSet`.
+Here, `Q` can be copied directly because it is an own parameter of `BTreeMap::contains_key`. But `K` defined in `BTreeMap` need to be remapped to `T` defined in `BTreeSet` (We use `?K` to denote a parameter that has been copied but not yet remapped).
 
-In the example above, `?K` denotes a parameter that has been copied but not yet remapped. Inferring this parameter from the context is not yet supported ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)). Therefore the parameter must be explicitly substituted through the path:
+To make the example work the parameter can be explicitly substituted through the path:
 
 ```rust
 reuse BTreeMap::<T, A>::contains_key as contains { self.map }
 ```
-
-_See the following sections for rationale/alternatives_:
-
-- [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
 
 ↩ [Generics remapping](#generics-remapping)
 
@@ -961,7 +953,7 @@ Where `?K` denotes a parameter that has been copied but not remapped. There are 
 
    2. Compiler can use some sort of heuristic to substitute parameters defined in the implementation header (e.g., positional 1:1 matching or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated or renamed.
 
-3. We can generate new parameter. See [_part 2_](#what-happens-if-undefined-generic-parameters-remain-after-substitution-part-2).
+3. We could generate a new parameter and substitute `?K` with it. This would not pass type checking in the example above, but it might be useful in other cases. See [_part 2_](#what-happens-if-undefined-generic-parameters-remain-after-substitution-part-2).
 
 In this proposal, we suggest using the “report an error” option because it is the most conservative approach and requires generic arguments to be specified explicitly. Once compiler architecture is advanced enough we can implement more sophisticated inference.
 
@@ -998,7 +990,7 @@ fn min<T: Ord + Sized>(v1: T, v2: T) -> T {
 }
 ```
 
-Traits include an implicit `Self` parameter that can, in principle, be modeled as a generic parameter `This: Trait`. If we allow coping parameters from parent context `min` implementation could be replaced with `reuse Ord::min;`.
+Traits include an implicit `Self` parameter that can be modeled as a generic parameter `This: Trait`. If we allow coping parameters from parent context `min` implementation could be replaced with `reuse Ord::min;`.
 
 in principle, this could extend beyond `Self` to any parent parameter, but doing so raises multiple questions:
 
