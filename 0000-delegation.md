@@ -77,7 +77,7 @@ The `Iterator` implementation simply forwards multiple method calls to a field t
 
 This situation highlights a gap in Rust’s ergonomics: while Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
-This RFC aims to address this limitation by introducing a delegation feature.Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive the work.
+This RFC aims to address this limitation by introducing a delegation feature. Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive the work.
 
 TODO: difference with previous
 
@@ -292,7 +292,7 @@ As mentioned earlier, a delegation item does not introduce its own generic param
 
 The following procedure is used for remapping:
 
-1. First, generic parameters are substituted to the signature and where-clauses:
+1. First, generic parameters are substituted in the signature and where-clauses:
    1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
    2. For other cases, using the generic arguments provided by the user in the callee path:
       1. `Self` type in the path is used to substitute the delegation resolution's `Self` type ([?](#why-might-self-type-need-to-be-substituted)).
