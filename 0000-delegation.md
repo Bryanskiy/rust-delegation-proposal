@@ -9,25 +9,11 @@
 
 This RFC proposes a design for _delegation_: syntactic sugar for ergonomically forwarding function calls.
 
-## Terminology
-
-The following terminology is frequently used in this proposal:
-
-- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
-- _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
-- _renaming_ - the ability to give the generated function a name that differs from the callee's name.
-- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
-- _desugaring_ - the translation from a delegation item into regular function calls.
-- _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
-- _delegation resolution_ - a function from which the signature is copied during desugaring.
-
 ## Implementation experience
 
 This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
 
 Many of the examples in this proposal can be tried on nightly Rust. However the implementation is still incomplete, contains some questionable design decisions and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
-
-TODO: 2 section:  we have parts that we are sure, we have parts that we implemented in some way, but very questionable. Somehow tell about this.
 
 ## How to read this RFC
 
@@ -41,12 +27,23 @@ TODO: Check links</br>
 TODO: notes to implementation experience, other notes </br>
 TODO: examples </br>
 TODO: note that doc format was taken from another rfc/create something else
+TODO: 2 section:  we have parts that we are sure, we have parts that we implemented in some way, but very questionable. Somehow tell about this.
+
+### Terminology
+
+The following terminology is frequently used in this proposal:
+
+- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
+- _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
+- _renaming_ - the ability to give the generated function a name that differs from the callee's name.
+- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
+- _desugaring_ - the translation from a delegation item into regular function calls.
+- _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
+- _delegation resolution_ - a function from which the signature is copied during desugaring.
 
 ## Motivation
 
-Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Although these forwarding implementations are usually trivial they impose a practical cost in terms of verbosity and readability.
-
-Consider a common pattern found throughout real Rust codebases:
+Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Consider a common pattern found throughout real Rust codebases:
 
 ```rust
 // library/alloc/src/collections/btree/set.rs
@@ -58,7 +55,9 @@ impl<T: Hash, A: Allocator + Clone> Hash for BTreeSet<T, A> {
 }
 ```
 
-The is simply forwards a method call to a field. In practice the required repetition may even discourage the use of newtypes despite their advantages for type safety and abstraction. This situation highlights a gap in Rust’s ergonomics. While Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
+The implementation simply forwards a method call to a field. The pattern is particularly common with newtypes, which often need to reintroduce many of the inner type's methods or trait implementations. These forwarding implementations are usually trivial, but they impose a practical cost in terms of verbosity and readability.
+
+This situation highlights a gap in Rust’s ergonomics: while Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
 This limitation has long been recognized by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), a multiple discussions, and several macro crates ([delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador) are most popular amongst them). See [_Prior art_](#prior-art) for a discussion of these efforts.
 
