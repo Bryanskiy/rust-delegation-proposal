@@ -222,7 +222,7 @@ WhereClause
   - TODO: depending on `Self` type
 - Generic parameters(`GenericParams`) and where clause(`WhereClause`) are copied from the delegation resolution and remapped as described in [_Generics remapping_](#Generics-remapping).
 - The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
-- `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature (See [_Glob delegation_](#glob-delegation) and [_List delegation_](#list-delegation) for rationale).
+- `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature.
 - The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
 - TODO: return value transformations
 
@@ -313,11 +313,6 @@ Glob delegation delegates every method of a trait in one go. It's only permitted
 
 TODO: how it works with defaults </br>
 TODO: `reuse impl Trait` + how it works with override </br>
-
-### When things go wrong
-
-TODO: diagnostics <br>
-TODO: problems with inherence
 
 ## Drawbacks
 [drawbacks]: #drawbacks
