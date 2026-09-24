@@ -77,9 +77,9 @@ The `Iterator` implementation simply forwards multiple method calls to a field t
 
 This situation highlights a gap in Rust’s ergonomics: while Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
-This limitation has long been recognized by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), a multiple discussions, and several macro crates ([delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador) are most popular amongst them). See [_Prior art_](#prior-art) for a discussion of these efforts.
+This RFC aims to address this limitation by introducing a delegation feature.Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive the work.
 
-This proposal revisits delegation.
+TODO: difference with previous
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
