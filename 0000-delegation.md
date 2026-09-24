@@ -43,19 +43,37 @@ The following terminology is frequently used in this proposal:
 
 ## Motivation
 
-Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Consider a common pattern found throughout real Rust codebases:
+Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Consider a common pattern [found](https://github.com/rust-lang/rust/blob/ad2e756c7093149e25f67a747e579a49b7e6976e/library/core/src/iter/adapters/flatten.rs#L55-L104) throughout real Rust codebases:
 
 ```rust
-// library/alloc/src/collections/btree/set.rs
-
-impl<T: Hash, A: Allocator + Clone> Hash for BTreeSet<T, A> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.map.hash(state)
+impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
+where
+    F: FnMut(I::Item) -> U,
+{
+    fn next(&mut self) -> Option<U::Item> {
+        self.inner.next()
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.inner.advance_by(n)
+    }
+
+    fn count(self) -> usize {
+        self.inner.count()
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        self.inner.last()
+    }
+    ...
 }
 ```
 
-The implementation simply forwards a method call to a field. The pattern is particularly common with newtypes, which often need to reintroduce many of the inner type's methods or trait implementations. These forwarding implementations are usually trivial, but they impose a practical cost in terms of verbosity and readability.
+The `Iterator` implementation simply forwards multiple method calls to a field that already implements that trait. The pattern is particularly common with newtypes, which often need to reintroduce many of the inner type's methods or trait implementations.
 
 This situation highlights a gap in Rust’s ergonomics: while Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
@@ -76,7 +94,17 @@ pub struct BTreeSet<T> {
 }
 ```
 
-The [motivation](#motivation) section already showed how the standard library forwards `Hash` by hand. With a delegation, the same implementation is:
+Here is the forwarding implementation of the `Hash` trait for `BTreeSet`:
+
+```rust
+impl<T: Hash> Hash for BTreeSet<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.map.hash(state)
+    }
+}
+```
+
+With a delegation, the same implementation is:
 
 ```rust
 impl<T: Hash> Hash for BTreeSet<T> {
