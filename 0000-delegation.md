@@ -952,14 +952,9 @@ Where `?K` denotes a parameter that has been copied but not remapped. There are 
 
    2. Compiler can use some sort of heuristic to substitute parameters defined in the implementation header (e.g., positional 1:1 matching or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated or renamed.
 
-3. We could generate a new parameter and substitute `?K` with it. This would not pass type checking in the example above, but it might be useful in other cases. See [_part 2_](#what-happens-if-undefined-generic-parameters-remain-after-substitution-part-2).
+3. We could generate a new parameter and substitute `?K` with it. This would not pass type checking in the example above, but it might be useful in other cases ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution-part-2)).
 
 In this proposal, we suggest using the “report an error” option because it is the most conservative approach and requires generic arguments to be specified explicitly. Once compiler architecture is advanced enough we can implement more sophisticated inference.
-
-_See the following sections for rationale/alternatives_:
-
-- [What happens if undefined generic parameters remain after substitution? Part 2.
-](#what-happens-if-undefined-generic-parameters-remain-after-substitution-part-2)
 
 See the following sections for future possibilities:
 
