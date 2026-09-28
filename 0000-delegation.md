@@ -262,7 +262,7 @@ _See the following sections for rationale/alternatives_:
 
 ### Paths and name resolution
 
-Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)). They can also refer to other delegation items. If a cycle is encountered in the chain of recursive delegations, an error is reported.
+Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)). They can also refer to other delegation items. If a cycle is encountered in the chain of recursive delegations, an error is reported.
 
 > [!NOTE]
 >
@@ -281,7 +281,7 @@ TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-
 
 _See the following sections for rationale/alternatives_:
 
-- [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
+- [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
 - [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 
 ### Generics remapping
@@ -486,7 +486,7 @@ _See the following sections for rational/alternatives_:
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
-#### why are qualified paths used for call disambiguation? Part 1: high-level view.
+#### why are qualified paths used for call disambiguation?
 
 Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
@@ -503,7 +503,7 @@ From the delegation's perspective the alternatives can be categorized as follows
 
 3. Use keywords as disambiguators.
 
-    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach doesn't generalize well to generic contexts. For example, it cannot distinguish between multiple generic implementations of the same trait. Also see next parts ([?](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)).
+    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach doesn't generalize well to generic contexts. For example, it cannot distinguish between multiple generic implementations of the same trait.
 
 
 The second option has been chosen for this proposal:
@@ -511,19 +511,11 @@ The second option has been chosen for this proposal:
 1. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
 2. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
 
-_See the following sections for rationale/alternatives_:
+<details>
 
-- [Why are qualified paths used for call disambiguation? Part 2.](#why-are-qualified-paths-used-for-call-disambiguation-part-2-Self-type)
+<summary> Example: disambiguation of methods without receiver.</summary>
 
-_See the following sections for future possibilities_:
-
-- [Name-based resolution as sugar](#name-based-resolution-as-sugar)
-
-↩ [Qualified paths and name resolution](#qualified-paths-and-name-resolution)
-
-#### Why are qualified paths used for call disambiguation? Part 2: `Self` type.
-
-We could limit delegation paths to `Trait::name` or `Type::name`, but this is not sufficient to express all delegation patterns. Consider a trait method without a receiver. In regular Rust code calling such a method requires specifying the particular implementation of the trait, for example:
+Consider a trait method without a receiver. In regular Rust code calling such a method requires specifying the particular implementation of the trait, for example:
 
 ```rust
 trait Trait { fn foo(); }
@@ -551,17 +543,13 @@ Allowing `Self` in delegation paths makes this possible:
 impl Trait for Outer { reuse <Inner as Trait>::foo; } // OK
 ```
 
-Therefore, delegation paths should permit `Self` type for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [_guiding principles_](#design-guiding-principles)).
+</details>
 
-_See the following sections for rationale/alternatives_:
+<details>
 
-- [Why are qualified paths used for call disambiguation? Part 3.](#why-are-qualified-paths-used-for-call-disambiguation-part-3-generic-arguments)
+<summary> Example: disambiguation of generic methods.</summary>
 
-↩ [Qualified paths and name resolution](#qualified-paths-and-name-resolution)
-
-#### Why are qualified paths used for call disambiguation? Part 3: generic arguments.
-
-We could limit delegation paths to `Trait::name`, `Type::name` and `<Type as Trait>::name`, but this is not sufficient to express all delegation patterns. Consider a multiple implementations of the same trait with generic parameters. Rust code calling a method of such trait requires specifying the particular generic arguments, for example:
+Consider a multiple implementations of the same trait with generic parameters. Rust code calling a method of such trait requires specifying the particular generic arguments, for example:
 
 ```rust
 trait Trait<T> { fn foo(&self) {} }
@@ -591,11 +579,13 @@ Allowing generic arguments in delegation paths makes this possible:
 impl<T> Trait<T> for Outer { reuse Trait::<()>::foo { self.0 } } // OK
 ```
 
-Therefore, delegation paths should permit generic arguments for the same reason that regular Rust paths use them: they can be necessary to uniquely identify the intended callee (also see [_guiding principles_](#design-guiding-principles)).
+</details>
 
-TODO: part 4 - type bindings
+_See the following sections for future possibilities_:
 
-↩ [Qualified paths and name resolution](#qualified-paths-and-name-resolution)
+- [Name-based resolution as sugar](#name-based-resolution-as-sugar)
+
+↩ [Paths and name resolution](#paths-and-name-resolution)
 
 #### Why is the delegation resolution the trait being implemented in trait implementations?
 
