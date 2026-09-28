@@ -184,22 +184,11 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-used)) and consists of a path, which may be either simple or qualified and an optional block expression. Their role is discussed in the following sections.
+A delegation item starts with the `reuse` keyword and consists of a path, which may be either simple or qualified and an optional block expression. Their role is discussed in the following sections.
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
-Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)). Delegation item doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
-
-_See the following sections for rationale/alternatives_:
-
-- [Why can delegation items be declared in any position?](#why-can-delegation-items-be-declared-in-any-position)
-- [Why is visibility manually added instead of being copied from the callee?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)
-- [Why are attributes manually added instead of being copied from the callee?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)
-- [Why is list delegation supported?](#why-is-list-delegation-supported)
-- [Why is glob delegation supported?](#why-is-glob-delegation-supported)
-- [Why is renaming supported?](#why-is-renaming-supported)
-- [Why doesn't a delegation item provide syntax for introducing its own generics?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)
-- [Why doesn't a delegation item provide syntax for arguments or return value transformations?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)
+Delegation of types and constants is not currently supported. Delegation item doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
 
 _See the following sections for unresolved questions_:
 
@@ -251,13 +240,6 @@ WhereClause
 - The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
 - TODO: return value transformations
 
-_See the following sections for rationale/alternatives_:
-
-- [Why is the delegation resolution the trait being implemented in trait implementations?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)
-- [Why are function qualifiers copied unchanged?](#why-are-function-qualifiers-copied-unchanged)
-- [Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)
-- [Why are statements not passed to the call?](#why-are-statements-not-passed-to-the-call)
-
 ### Paths and name resolution
 
 Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)). They can also refer to other delegation items. If a cycle is encountered in the chain of recursive delegations, an error is reported.
@@ -276,11 +258,6 @@ Paths provide an unambiguous way to identify callable items, including trait met
 TODO(move this): callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
 
 TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
-
-_See the following sections for rationale/alternatives_:
-
-- [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
-- [Why is delegation of variadic functions not supported?](#why-is-delegation-of-variadic-functions-not-supported)
 
 ### Generics remapping
 
@@ -303,15 +280,6 @@ The following procedure is used for remapping:
 
 TODO: examples?
 
-_See the following sections for rationale/alternatives_:
-
-- [Why might `Self` type need to be substituted?](#why-might-self-type-need-to-be-substituted)
-- [Why might parent parameters need to be substituted?](#why-might-parent-parameters-need-to-be-substituted)
-- [Why might child parameters need to be substituted?](#why-might-child-parameters-need-to-be-substituted)
-- [Why inference variables are allowed in paths?](#why-inference-variables-are-allowed-in-paths)
-- [Why nested inference variables are not allowed in paths?](#why-nested-inference-variables-are-not-allowed-in-paths)
-- [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
-
 ### Target expression
 
 The target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that transforms the delegation item's first argument before that argument is forwarded to the resolved callee. When no block is given the first argument is passed through unchanged ([?](#why-can-the-block-expression-be-omitted)). There are no restrictions on the expressions that can be used inside the target expression ([?](#why-target-expression-is-not-restricted)).
@@ -319,12 +287,6 @@ The target expression is an optional [block expression](https://doc.rust-lang.or
 
 Inside that block, `self` refers to TODO <br>
 TODO: `self` only in the final expression? Prohibited in statements.
-
-_See the following sections for rational/alternatives:_
-
-- [Why is the target expression a block expression?](#why-is-the-target-expression-a-block-expression)
-- [Why can the block expression be omitted?](#why-can-the-block-expression-be-omitted)
-- [Why target expression is not restricted?](#why-target-expression-is-not-restricted)
 
 ### List delegation
 
