@@ -259,6 +259,10 @@ TODO(move this): callee might have no receiver, might take receiver by value(`se
 
 TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
 
+_See the following sections for future possibilities_:
+
+- [Name-based resolution as sugar](#name-based-resolution-as-sugar)
+
 ### Generics remapping
 
 TODO: how it's related with `Self ` type mapping? `Self ` type mapping + `Type` in `<Type as Trait>`?
@@ -279,6 +283,10 @@ The following procedure is used for remapping:
 3. Copied parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
 
 TODO: examples?
+
+_See the following sections for future possibilities_:
+
+- [More sophisticated inference of generic parameters](#more-sophisticated-inference-of-generic-parameters)
 
 ### Target expression
 
