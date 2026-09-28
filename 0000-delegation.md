@@ -265,8 +265,6 @@ _See the following sections for future possibilities_:
 
 ### Generics remapping
 
-TODO: how it's related with `Self ` type mapping? `Self ` type mapping + `Type` in `<Type as Trait>`?
-
 As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to what would be written by hand (e.g. a callee's parent parameters don't automatically make sense once copied into a different scope).
 
 The following procedure is used for remapping:
@@ -274,15 +272,13 @@ The following procedure is used for remapping:
 1. First, generic parameters are substituted in the signature and where-clauses:
    1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
    2. For other cases, using the generic arguments provided by the user in the callee path:
-      1. `Self` type in the path is used to substitute the delegation resolution's `Self` type ([?](#why-might-self-type-need-to-be-substituted)).
+      1. `Self` type in the path is not substituted ([?](#why-is-self-type-not-substituted)).
       2. Generic arguments in the parent segment are used to substitute delegation resolution's parent parameters ([?](#why-might-parent-parameters-need-to-be-substituted)).
       3. Generic arguments child segment are used to substitute delegation resolution's own parameters ([?](#why-might-child-parameters-need-to-be-substituted)).
       4. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a parameter should not be substituted. ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
       5. When no argument is specified it is treated as `_`/`'_` was written.
 2. If any non-own parameters in the signature or where-clauses remain unsubstituted, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
 3. Copied parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
-
-TODO: examples?
 
 _See the following sections for future possibilities_:
 
@@ -769,9 +765,9 @@ TODO: find github issue
 
 ↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
 
-#### Why might `Self` type need to be substituted?
+#### Why is `Self` type not substituted?
 
-Consider the example:
+In the name resolution section, we provided an example of how the `Self` type can be used to disambiguate a callee without a receiver. However, `Self` does not participate in generic substitution, that is, it always refers to the `Self` type of the current context. Consider the example:
 
 ```rust
 trait Iterator {
@@ -786,29 +782,29 @@ trait Iterator {
 pub struct UnordItems<T, I: Iterator<Item = T>>(I);
 
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
-    reuse Iterator::any { self.0 }
+    pub fn any<F: Fn(T) -> bool>(mut self, f: F) -> bool {
+        self.0.any(f)
+    }
   ...
 }
 ```
 
-The generated method:
+Suppose we replace the implementation of  `UnordItems::any` with delegation item `reuse Iterator::any { self.0 }`. The generated method:
 
 ```rust
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
-    pub fn any<F: Fn(<?Self as Iterator>::Item) -> bool>(mut self, f: F) -> bool {
+    pub fn any<F: FnMut(<?Self as Iterator>::Item) -> bool>(mut self: &mut ?Self, f: F) -> bool {
         Iterator::any(&mut self.0)
     }
   ...
 }
 ```
 
-Here, `F` can be copied directly because it is an own parameter of `Iterator::any`. But `Self` is an own parameter of `Iterator` trait and need to be remapped to `I` defined in `UnordItems` (We use `?Self` to denote a parameter that has been copied but not yet remapped).
+Here, `F` can be copied directly because it is an own parameter of `Iterator::any`. But `Self` is an own parameter of `Iterator` trait. To make the example work we
+1. would need to substitute `?Self` in `<?Self as Iterator>::Item` with `I`(e.g. with `reuse <I as Iterator>::any { self.0 }`)
+2. would need to substitute `?Self` in `mut self: &mut ?Self` with `UnordItems<T, I>` i.e. leave the parameter as a regular receiver.
 
-To make the example work the parameter can be explicitly substituted through the path:
-
-```rust
-reuse <I as Iterator>::any { self.0 }
-```
+Thus, `?Self` would need to be substituted with different types depending on its position in the signature or where-clauses.
 
 ↩ [Generics remapping](#generics-remapping)
 
