@@ -184,9 +184,7 @@ The delegation item has the form:
 +     PathExprSegment ( as IDENTIFIER )?
 ```
 
-A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-used)) and consists of
-- a path, which may be either simple or qualified. See the following [_Paths and name resolution_](#paths-and-name-resolution) section for a discussion of the rules and implementation details associated with name resolution.
-- an optional block expression. See the following [_Target expression_](#target-expression) section for detailed discussion of the rules associated with it.
+A delegation item starts with the `reuse` keyword ([?](#what-keyword-should-be-used)) and consists of a path, which may be either simple or qualified and an optional block expression. Their role is discussed in the following sections.
 
 Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
 
