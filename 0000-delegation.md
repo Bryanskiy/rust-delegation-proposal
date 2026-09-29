@@ -11,7 +11,7 @@ This RFC proposes a design for _delegation_: syntactic sugar for ergonomically f
 
 ## Motivation
 
-Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Consider a common pattern [found](https://github.com/rust-lang/rust/blob/ad2e756c7093149e25f67a747e579a49b7e6976e/library/core/src/iter/adapters/flatten.rs#L55-L104) throughout real Rust codebases:
+Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually, often with the help of macros. Consider a common pattern [found](https://github.com/rust-lang/rust/blob/ad2e756c7093149e25f67a747e579a49b7e6976e/library/core/src/iter/adapters/flatten.rs#L55-L104) throughout real Rust codebases:
 
 ```rust
 impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
@@ -41,13 +41,17 @@ where
 }
 ```
 
-The `Iterator` implementation simply forwards multiple method calls to a field that already implements that trait. The pattern is particularly common with newtypes, which often need to reintroduce many of the inner type's methods or trait implementations.
+The `Iterator` implementation simply forwards multiple method calls to a field that already implements that trait. The pattern is particularly common with newtypes, which often need to reintroduce many of the inner type's inherent methods or trait implementations.
 
 This situation highlights a gap in Rust’s ergonomics: while Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
-This RFC aims to address this limitation by introducing a delegation feature. Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive the work.
+While forwarding to subobject methods remains the main motivating scenario, if we have a general enough mechanism for function call forwarding, we will be able to support other scenarios as well.
+- Inherent method on a type forwarding to a method from trait implementation on the same type.
+- A "reexport" on steroids adding attributes to some existing function definition
+  - E.g. target feature attributes. TODO: and example from stdarch
+- Any other scenario having the general shape of a function calling another function with limited argument transformation.
 
-TODO: difference with previous
+This RFC aims to address these issues by introducing the delegation feature, providing such generic forwarding mechanism. Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive that work.
 
 ## How to read this RFC
 
@@ -1051,6 +1055,8 @@ Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inhe
 
 ## Prior art
 [prior-art]: #prior-art
+
+TODO: difference with previous - for each prior art say how this RFC is different (at high level)
 
 - [Delegation or similar mechanisms in other languages](#delegation-or-similar-mechanisms-in-other-languages)
 - [Related proposals in Rust](#related-proposals-in-Rust)
