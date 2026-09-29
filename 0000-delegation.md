@@ -1090,7 +1090,22 @@ Work in this direction is already being explored. See [reflection project goal](
 
 Rust could instead adopt some form of type embedding (See Go in [Prior art](#prior-art)), where an anonymous field's methods are automatically "promoted" onto the outer struct's method set.
 
-[rust-lang/rfcs#2431](https://github.com/rust-lang/rfcs/issues/2431), opened in 2018, sketches a mechanism for Rust. The issue was posted as a rough idea seeking feedback, but it received little response and remains open with no further activity.
+[rfcs#2431](https://github.com/rust-lang/rfcs/issues/2431), opened in 2018, sketches a mechanism for Rust. The issue was posted as a rough idea seeking feedback, but it received little response and remains open with no further activity.
+
+#### Language support for newtypes
+
+An alternative to this RFC would be to add language support specifically for the newtype pattern. For example, derive trait implementations for a newtype wrapper based on the traits implemented by its wrapped field, rather than providing a general-purpose delegation mechanism for arbitrary functions.
+
+This narrower idea has been proposed repeatedly over the years:
+- [rfcs#261](https://github.com/rust-lang/rfcs/issues/261) is a home issue for some proposals since 2014.
+- TODO: https://github.com/rust-lang/rfcs/pull/949
+- TODO: https://github.com/rust-lang/rfcs/pull/2242
+- TODO: https://github.com/rust-lang/rfcs/issues/3596 (dup)
+- TODO: https://github.com/rust-lang/rfcs/pull/3951
+
+Haskell has a working version of this idea: TODO
+
+This gap is already filled at the library level, which weakening the case for a language-level feature: [derive_more](https://crates.io/crates/derive_more) offer `#[derive(..)]` macros for exactly this pattern today.
 
 #### Inheritance
 
