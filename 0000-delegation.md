@@ -55,29 +55,30 @@ This RFC aims to address these issues by introducing the delegation feature, pro
 
 ## How to read this RFC
 
-This RFC is quite long, and a few kinds of cross-reference recur throughout it, so it's worth spelling out the convention up front:
+This RFC is quite long, and a few kinds of cross-references recur throughout it, so it's worth spelling out the convention up front:
 
 - A ([?](#anchor)) link points to a rationale subsection under Rationale and alternatives explaining why a design decision was made the way it was. These are asides: skipping them costs nothing for understanding the feature itself, only the reasoning behind one specific choice.
 - A [_text in italics_](#anchor) link points to another section of the RFC: material the current paragraph depends on.
 - A plain [text](url) link points outside this RFC such as a pull request, issue, comment, crate, or page of the Rust reference.
 
+The format of this RFC was inspired by RFC XXX (TODO: link).
+
 TODO: Check links</br>
 TODO: notes to implementation experience, other notes </br>
 TODO: examples </br>
-TODO: note that doc format was taken from another rfc/create something else
 TODO: 2 section:  we have parts that we are sure, we have parts that we implemented in some way, but very questionable. Somehow tell about this.
 
 ### Terminology
 
 The following terminology is frequently used in this proposal:
 
-- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
-- _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
+- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to the specified callee.
+- _target expression_ - an optional block expression that transforms the generate function's first argument before that argument is forwarded to the callee.
+- _parent context_ - the parent item in which the delegation item appears. This can be a module or block (for free functions), a trait implementation, an inherent implementation, or a trait definition (for associated functions).
+- _desugaring_ - transformation of a delegation item into a regular function definition with signature and body.
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
-- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
-- _desugaring_ - the translation from a delegation item into regular function calls.
 - _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
-- _delegation resolution_ - a function from which the signature is copied during desugaring.
+- _delegation resolution_ - a function definition from which the signature is copied during desugaring.
 
 ## Implementation experience
 
