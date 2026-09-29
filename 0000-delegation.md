@@ -1096,7 +1096,7 @@ Rust could instead adopt some form of type embedding (See Go in [Prior art](#pri
 
 Rust could instead adopt some form of inheritance closer to what object-oriented languages provide. However, inheritance has been discussed extensively in the context of Rust, and it is generally not considered aligned with the language's design philosophy.
 
-Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) for why.
+Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing).
 
 ## Prior art
 [prior-art]: #prior-art
@@ -1133,7 +1133,7 @@ class Outer(inner: Inner):
 
 Its selectors line up closely with this proposal's three delegation forms: a single selector corresponds to individual delegation, multiple selectors correspond to list delegation, and a wildcard selector (`*`) corresponds to glob delegation.
 
-`x as y` renames a member on export, the very same `as` keyword this RFC uses for [renaming](#why-is-renaming-supported).
+`x as y` renames a member on export, the very same `as` keyword this RFC uses for renaming.
 
 #### [Delegation in Kotlin](https://kotlinlang.org/docs/delegation.html)
 
