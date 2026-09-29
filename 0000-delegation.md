@@ -94,7 +94,11 @@ Some delegation sub-features like delegation to inherent methods may work in a l
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-TODO: continue developing example with with more advanced features.
+TODO: continue developing examples with more advanced features (which exactly?).
+- target expr removal (btreemap)
+- glob and reuse impl (iterator can be used)
+- binary operator for newtype (btreemap)
+- example motivating disambiguators
 
 Suppose you're writing a `BTreeSet<T>` type as a wrapper around `BTreeMap<T, ()>` which is, incidentally, close to how the standard library's own `BTreeSet` is actually built (real `BTreeSet` also carries an allocator parameter, elided here for simplicity).
 
@@ -114,7 +118,7 @@ impl<T: Hash> Hash for BTreeSet<T> {
 }
 ```
 
-With a delegation, the same implementation is:
+With delegation, the same implementation may look like:
 
 ```rust
 impl<T: Hash> Hash for BTreeSet<T> {
@@ -122,13 +126,14 @@ impl<T: Hash> Hash for BTreeSet<T> {
 }
 ```
 
-`reuse` item is a new delegation item. `Hash::hash` is the callee, and `{ self.map }` is the target expression: a small block which replaces the callee's first argument.
+The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block which trailing expression replaces the callee's first argument.
 
-TODO: The compiler needs an explicit hint such as `Hash::hash` rather than just `hash`, because callee might differ. Check `Default` trait impl.
+`Hash::hash` is a regular path unambiguously identifying the function to which we are forwarding,
+resolved as any other paths in value namespace. Paths with generic arguments, including fully qualified paths, can also be used.
 
-### Other parent context
+### Other parent contexts
 
-Delegation isn't limited to trait methods. `BTreeMap` implements `contains_key` as an inherent method, and reuse can forward it just as easily:
+Delegation isn't limited to trait methods. `BTreeMap` implements `contains_key` as an inherent method, and `reuse` can forward it just as easily:
 
 ```rust
 impl<T: Ord> BTreeSet<T> {
@@ -136,7 +141,7 @@ impl<T: Ord> BTreeSet<T> {
 }
 ```
 
-TODO: continue
+When delegating to type-relative paths, it is currently necessary to specify the type's generic arguments.
 
 ### Renaming a delegated method
 
@@ -148,9 +153,11 @@ impl<T> BTreeSet<T> {
 }
 ```
 
+You can see that the syntax of `reuse` items is generally modeled after `use` items.
+
 ### Delegating several methods at once
 
-Listing out `is_empty`, `clear` and `len` as three separate reuse items is still three lines whose only real difference is the method name. List delegation collapses them into one:
+Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
 
 ```rust
 impl<T> BTreeSet<T> {
@@ -158,7 +165,7 @@ impl<T> BTreeSet<T> {
 }
 ```
 
-Each generated method gets the receiver its callee needs, not a receiver you have to spell out yourself: `clear` needs to mutate the map, so the method this generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases.
+Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
