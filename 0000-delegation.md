@@ -9,38 +9,6 @@
 
 This RFC proposes a design for _delegation_: syntactic sugar for ergonomically forwarding function calls.
 
-## Implementation experience
-
-This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
-
-Many of the examples in this proposal can be tried on nightly Rust. However the implementation is still incomplete, contains some questionable design decisions and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
-
-## How to read this RFC
-
-This RFC is quite long, and a few kinds of cross-reference recur throughout it, so it's worth spelling out the convention up front:
-
-- A ([?](#anchor)) link points to a rationale subsection under Rationale and alternatives explaining why a design decision was made the way it was. These are asides: skipping them costs nothing for understanding the feature itself, only the reasoning behind one specific choice.
-- A [_text in italics_](#anchor) link points to another section of the RFC: material the current paragraph depends on.
-- A plain [text](url) link points outside this RFC such as a pull request, issue, comment, crate, or page of the Rust reference.
-
-TODO: Check links</br>
-TODO: notes to implementation experience, other notes </br>
-TODO: examples </br>
-TODO: note that doc format was taken from another rfc/create something else
-TODO: 2 section:  we have parts that we are sure, we have parts that we implemented in some way, but very questionable. Somehow tell about this.
-
-### Terminology
-
-The following terminology is frequently used in this proposal:
-
-- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
-- _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
-- _renaming_ - the ability to give the generated function a name that differs from the callee's name.
-- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
-- _desugaring_ - the translation from a delegation item into regular function calls.
-- _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
-- _delegation resolution_ - a function from which the signature is copied during desugaring.
-
 ## Motivation
 
 Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Consider a common pattern [found](https://github.com/rust-lang/rust/blob/ad2e756c7093149e25f67a747e579a49b7e6976e/library/core/src/iter/adapters/flatten.rs#L55-L104) throughout real Rust codebases:
@@ -80,6 +48,38 @@ This situation highlights a gap in Rust’s ergonomics: while Rust provides powe
 This RFC aims to address this limitation by introducing a delegation feature. Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive the work.
 
 TODO: difference with previous
+
+## How to read this RFC
+
+This RFC is quite long, and a few kinds of cross-reference recur throughout it, so it's worth spelling out the convention up front:
+
+- A ([?](#anchor)) link points to a rationale subsection under Rationale and alternatives explaining why a design decision was made the way it was. These are asides: skipping them costs nothing for understanding the feature itself, only the reasoning behind one specific choice.
+- A [_text in italics_](#anchor) link points to another section of the RFC: material the current paragraph depends on.
+- A plain [text](url) link points outside this RFC such as a pull request, issue, comment, crate, or page of the Rust reference.
+
+TODO: Check links</br>
+TODO: notes to implementation experience, other notes </br>
+TODO: examples </br>
+TODO: note that doc format was taken from another rfc/create something else
+TODO: 2 section:  we have parts that we are sure, we have parts that we implemented in some way, but very questionable. Somehow tell about this.
+
+### Terminology
+
+The following terminology is frequently used in this proposal:
+
+- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
+- _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
+- _renaming_ - the ability to give the generated function a name that differs from the callee's name.
+- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
+- _desugaring_ - the translation from a delegation item into regular function calls.
+- _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
+- _delegation resolution_ - a function from which the signature is copied during desugaring.
+
+## Implementation experience
+
+This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
+
+Many of the examples in this proposal can be tried on nightly Rust. However the implementation is still incomplete, contains some questionable design decisions and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
