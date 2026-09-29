@@ -84,7 +84,12 @@ The following terminology is frequently used in this proposal:
 
 This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
 
-Many of the examples in this proposal can be tried on nightly Rust. However the implementation is still incomplete, contains some questionable design decisions and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
+Most of the examples in this proposal can be tried on nightly Rust.
+
+The nightly implementation is feature-complete, and may even accept more code than this RFC describes, since its primary purpose was experimentation.
+Different parts of the implementation may have different levels of design maturity and polishing, and if stabilization of the feature happens it will definitely happen in multiple stages.
+
+Some delegation sub-features like delegation to inherent methods may work in a limited way, since supporting them properly would require compiler reengineering to avoid query cycles. Some of these limitations are discussed throughout the proposal.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
