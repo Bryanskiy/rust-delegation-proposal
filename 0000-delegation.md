@@ -170,7 +170,9 @@ Each generated method gets the receiver its callee needs: `clear` needs to mutat
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This proposal introduces a new [item kind](https://doc.rust-lang.org/reference/items.html), the delegation item:
+### Syntax
+
+This proposal introduces two new [item kinds](https://doc.rust-lang.org/reference/items.html) - function delegation item and impl delegation item:
 
 ```diff
 Item →
@@ -182,36 +184,57 @@ Item →
         Module
       | ExternCrate
       ...
-+     | Delegation
++     | FnDelegation
++     | ImplDelegation
 ```
 
-Delegation items can be declared in any context where functions with bodies are permitted by the semantic rules. For example, delegation items cannot be declared inside an `extern` block. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)).
+Further on function delegation items are referred to as simply "delegation items".
 
-The delegation item has the form:
+Delegation items are accepted syntactically and semantically in all contexts where functions with bodies are accepted semantically.
+That means modules and blocks, traits, and implementations, but not `extern` blocks. In `extern` blocks delegation items are rejected syntactically.
+Delegation items in traits and implementations are associated items ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)).
+
+Delegation items has the form:
 ```diff
-+ Delegation →
-+     reuse DelegationPath ( BlockExpression | ; )
++ FnDelegation →
++     reuse DelegationPaths ( BlockExpression | ; )
 +
-+ DelegationPath →
-+     Path :: DelegationPathSegment
-+   | Path :: { ( DelegationPathSegment )+ ,? }
-+   | Path :: *
-+
-+ DelegationPathSegment →
-+     PathExprSegment ( as IDENTIFIER )?
++ DelegationPaths →
++     PathExpression ( as IDENTIFIER )?
++     ( PathExpression | QualifiedPathType ) :: { ( PathIdentSegment ( as IDENTIFIER )? )* , ? }
++     ( PathExpression | QualifiedPathType ) :: *
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a path, which may be either simple or qualified and an optional block expression. Their role is discussed in the following sections.
+The grammar is generally modeled after `use` items, with two major differences - qualified paths and generic arguments in paths are supported, and nested lists and globs are not supported.
 
-Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
+A delegation item starts with the `reuse` keyword ([?](#why-reuse)) and consists of a path prefix, which may be either simple or qualified, an optional list or glob suffix, and an optional block expression. Their roles are discussed in the following sections.
 
-Delegation of types and constants is not currently supported. Delegation item doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
+Delegation items come in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to define the delegated function with a different name ([?](#why-is-renaming-supported)).
+
+Delegation item intentionally doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item intentionally doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
+
+> [!NOTE]
+>
+> Expression path syntax (with mandatory turbofish) is used for consistency with other value paths, but it's not technically necessary and type path syntax (with optional turbofish) could be supported later if necessary.
+
+Impl delegation items has the form:
+```diff
++ ImplDelegation ->
++    `reuse` `unsafe`? `impl` GenericParams? `!`? TypePath `for` Type
++    WhereClause?
++     ( BlockExpression | ; )
+```
+
+It is the same as for the regular `impl` items, except that the block with associated items is replaced with a target expression block.
+
+TODO: vvv all of this is not about syntax
+
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)).
 
 _See the following sections for unresolved questions_:
 
 - [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
 - [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
-- [What keyword should be used?](#what-keyword-should-be-used)
 
 _See the following sections for future possibilities_:
 
@@ -651,6 +674,13 @@ _See the following sections for unresolved questions_:
 - [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
 
 ↩ [Reference-level explanation](#reference-level-explanation)
+
+#### Why `reuse`?
+
+The delegation syntax is generally modeled after `use` items, to be familiar and to choose the limit the syntactic budget.
+So the keyword is similar to `use` too, the callee function is not used directly like with imports, but rather reused to make a new function.
+
+Alternative options like `delegate` or `forward` could also be considered, but would benefit less from user's familiarity with `use` items.
 
 #### Why is list delegation supported?
 
@@ -1319,10 +1349,6 @@ Taking this into consideration, several design choices are possible:
 We prefer to leave all control to the user while also adding a lint that prevents a generated function from having greater visibility than the callee.
 
 ↩ [Why is visibility manually added instead of being copied from the callee?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)
-
-### What keyword should be used?
-
-The draft uses `reuse`, but other options like `delegate` or `forward` could be considered.
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
