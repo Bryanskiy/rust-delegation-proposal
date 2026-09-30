@@ -209,9 +209,9 @@ Delegation items has the form:
 
 The grammar is generally modeled after `use` items, with two major differences - qualified paths and generic arguments in paths are supported, and nested lists and globs are not supported.
 
-A delegation item starts with the `reuse` keyword ([?](#why-reuse)) and consists of a path prefix, which may be either simple or qualified, an optional list or glob suffix, and an optional block expression. Their roles are discussed in the following sections.
+A delegation item starts with the `reuse` keyword ([?](#why-reuse)) and consists of a path prefix, which may be either simple or qualified, suffix and an optional block expression. Their roles are discussed in the following sections.
 
-Delegation items come in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to define the delegated function with a different name ([?](#why-is-renaming-supported)).
+Suffix come in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to define the delegated function with a different name ([?](#why-is-renaming-supported)).
 
 Delegation item intentionally doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item intentionally doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
 
@@ -227,7 +227,7 @@ Impl delegation items has the form:
 +     ( BlockExpression | ; )
 ```
 
-It is the same as for the regular `impl` items, except that the block with associated items is replaced with a target expression block.
+It is the same as for the regular `impl` items, except that the block with associated items is replaced with an expression block.
 
 TODO: vvv all of this is not about syntax
 
@@ -351,7 +351,7 @@ TODO: `reuse impl Trait` + how it works with override </br>
 [drawbacks]: #drawbacks
 
 1. Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
-2. The delegation feature could potentially be implemented as third-partly library with compile‑time [reflection](#reflection) (if and when that becomes available).
+2. The delegation feature could potentially be implemented as third-partly library with compile‑time [_reflection_](#reflection) (if and when that becomes available).
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -1076,7 +1076,7 @@ See [_crates.io/delegate_](#cratesiodelegate) and [_crates.io/ambassador_](#crat
 
 Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: macros do not have access to type information such as the callee's resolved signature or the methods of a trait.
 
-Closing this gap fully would require the macro to see type information during expansion, which is the [reflection](#reflection) capability discussed as an alternative below.
+Closing this gap fully would require the macro to see type information during expansion, which is the [_reflection_](#reflection) capability discussed as an alternative below.
 
 #### Reflection
 
