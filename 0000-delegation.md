@@ -211,7 +211,7 @@ The grammar is generally modeled after `use` items, with two major differences -
 
 A delegation item starts with the `reuse` keyword ([?](#why-reuse)) and consists of a path prefix, which may be either simple or qualified, suffix and an optional block expression. Their roles are discussed in the following sections.
 
-Suffix come in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to define the delegated function with a different name ([?](#why-is-renaming-supported)).
+Suffixes come in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to define the delegated function with a different name ([?](#why-is-renaming-supported)).
 
 Delegation item intentionally doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item intentionally doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
 
