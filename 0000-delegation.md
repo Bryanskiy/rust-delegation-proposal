@@ -11,7 +11,7 @@ This RFC proposes a design for _delegation_: syntactic sugar for ergonomically f
 
 ## Motivation
 
-Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually often with the help of macros. Consider a common pattern [found](https://github.com/rust-lang/rust/blob/ad2e756c7093149e25f67a747e579a49b7e6976e/library/core/src/iter/adapters/flatten.rs#L55-L104) throughout real Rust codebases:
+Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually, often with the help of macros. Consider a common pattern [found](https://github.com/rust-lang/rust/blob/ad2e756c7093149e25f67a747e579a49b7e6976e/library/core/src/iter/adapters/flatten.rs#L55-L104) throughout real Rust codebases:
 
 ```rust
 impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
@@ -41,50 +41,66 @@ where
 }
 ```
 
-The `Iterator` implementation simply forwards multiple method calls to a field that already implements that trait. The pattern is particularly common with newtypes, which often need to reintroduce many of the inner type's methods or trait implementations.
+The `Iterator` implementation simply forwards multiple method calls to a field that already implements that trait. The pattern is particularly common with newtypes, which often need to reintroduce many of the inner type's inherent methods or trait implementations.
 
 This situation highlights a gap in Rust’s ergonomics: while Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
-This RFC aims to address this limitation by introducing a delegation feature. Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive the work.
+TODO: emphasis on newtypes
 
-TODO: difference with previous
+While forwarding to subobject methods remains the main motivating scenario, if we have a general enough mechanism for function call forwarding, we will be able to support other scenarios as well.
+- Inherent method on a type forwarding to a method from trait implementation on the same type.
+- A "reexport" on steroids adding attributes to some existing function definition
+  - E.g. target feature attributes. TODO: and example from stdarch
+- Any other scenario having the general shape of a function calling another function with limited argument transformation.
+
+This RFC aims to address these issues by introducing the delegation feature, providing such generic forwarding mechanism. Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive that work.
 
 ## How to read this RFC
 
-This RFC is quite long, and a few kinds of cross-reference recur throughout it, so it's worth spelling out the convention up front:
+This RFC is quite long, and a few kinds of cross-references recur throughout it, so it's worth spelling out the convention up front:
 
 - A ([?](#anchor)) link points to a rationale subsection under Rationale and alternatives explaining why a design decision was made the way it was. These are asides: skipping them costs nothing for understanding the feature itself, only the reasoning behind one specific choice.
 - A [_text in italics_](#anchor) link points to another section of the RFC: material the current paragraph depends on.
 - A plain [text](url) link points outside this RFC such as a pull request, issue, comment, crate, or page of the Rust reference.
 
+The format of this RFC was inspired by RFC XXX (TODO: link).
+
 TODO: Check links</br>
 TODO: notes to implementation experience, other notes </br>
 TODO: examples </br>
-TODO: note that doc format was taken from another rfc/create something else
 TODO: 2 section:  we have parts that we are sure, we have parts that we implemented in some way, but very questionable. Somehow tell about this.
 
 ### Terminology
 
 The following terminology is frequently used in this proposal:
 
-- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to a specified callee.
-- _target expression_ - an optional block expression that transforms the delegation item's first argument before that argument is forwarded to the resolved callee.
+- _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to the specified callee.
+- _target expression_ - an optional block expression which trailing expression transforms some of the generated function's arguments before those arguments are forwarded to the callee; usually, this is the method receiver.
+- _parent context_ - the parent item in which the delegation item appears. This can be a module or block (for free functions), a trait implementation, an inherent implementation, or a trait definition (for associated functions).
+- _desugaring_ - transformation of a delegation item into a regular function definition with signature and body.
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
-- _parent context_ - the parent item in which the delegation item appears. This can be a module (for free functions), a trait implementation, a type implementation or a trait(for associated items).
-- _desugaring_ - the translation from a delegation item into regular function calls.
 - _delegation pattern_ - a piece of code that can potentially be rewritten using a delegation item.
-- _delegation resolution_ - a function from which the signature is copied during desugaring.
+- _delegation resolution_ - a function definition from which the signature is copied during desugaring.
 
 ## Implementation experience
 
 This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
 
-Many of the examples in this proposal can be tried on nightly Rust. However the implementation is still incomplete, contains some questionable design decisions and may not work correctly in all cases, particularly for delegation of inherent methods and in generic contexts. These limitations are discussed throughout the proposal.
+Most of the examples in this proposal can be tried on nightly Rust.
+
+The nightly implementation is [feature-complete](https://en.wikipedia.org/wiki/Software_release_life_cycle#Feature-complete), and may even accept more code than this RFC describes, since its primary purpose was experimentation.
+Different parts of the implementation may have different levels of design maturity and polishing, and if stabilization of the feature happens it will definitely happen in multiple stages.
+
+Some delegation sub-features like delegation to inherent methods may work in a limited way, since supporting them properly would require compiler reengineering to avoid query cycles. Some of these limitations are discussed throughout the proposal.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-TODO: continue developing example with with more advanced features.
+TODO: continue developing examples with more advanced features (which exactly?).
+- target expr removal (btreemap)
+- glob and reuse impl (iterator can be used)
+- binary operator for newtype (btreemap)
+- example motivating disambiguators
 
 Suppose you're writing a `BTreeSet<T>` type as a wrapper around `BTreeMap<T, ()>` which is, incidentally, close to how the standard library's own `BTreeSet` is actually built (real `BTreeSet` also carries an allocator parameter, elided here for simplicity).
 
@@ -104,7 +120,7 @@ impl<T: Hash> Hash for BTreeSet<T> {
 }
 ```
 
-With a delegation, the same implementation is:
+With delegation, the same implementation may look like:
 
 ```rust
 impl<T: Hash> Hash for BTreeSet<T> {
@@ -112,13 +128,14 @@ impl<T: Hash> Hash for BTreeSet<T> {
 }
 ```
 
-`reuse` item is a new delegation item. `Hash::hash` is the callee, and `{ self.map }` is the target expression: a small block which replaces the callee's first argument.
+The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block which trailing expression replaces the callee's first argument.
 
-TODO: The compiler needs an explicit hint such as `Hash::hash` rather than just `hash`, because callee might differ. Check `Default` trait impl.
+`Hash::hash` is a regular path unambiguously identifying the function to which we are forwarding,
+resolved as any other paths in value namespace. Paths with generic arguments, including fully qualified paths, can also be used.
 
-### Other parent context
+### Other parent contexts
 
-Delegation isn't limited to trait methods. `BTreeMap` implements `contains_key` as an inherent method, and reuse can forward it just as easily:
+Delegation isn't limited to trait methods. `BTreeMap` implements `contains_key` as an inherent method, and `reuse` can forward it just as easily:
 
 ```rust
 impl<T: Ord> BTreeSet<T> {
@@ -126,7 +143,7 @@ impl<T: Ord> BTreeSet<T> {
 }
 ```
 
-TODO: continue
+When delegating to type-relative paths, it is currently necessary to specify the type's generic arguments.
 
 ### Renaming a delegated method
 
@@ -138,9 +155,11 @@ impl<T> BTreeSet<T> {
 }
 ```
 
+You can see that the syntax of `reuse` items is generally modeled after `use` items.
+
 ### Delegating several methods at once
 
-Listing out `is_empty`, `clear` and `len` as three separate reuse items is still three lines whose only real difference is the method name. List delegation collapses them into one:
+Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
 
 ```rust
 impl<T> BTreeSet<T> {
@@ -148,12 +167,14 @@ impl<T> BTreeSet<T> {
 }
 ```
 
-Each generated method gets the receiver its callee needs, not a receiver you have to spell out yourself: `clear` needs to mutate the map, so the method this generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases.
+Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This proposal introduces a new [item kind](https://doc.rust-lang.org/reference/items.html), the delegation item:
+### Syntax
+
+This proposal introduces two new [item kinds](https://doc.rust-lang.org/reference/items.html) - function delegation item and impl delegation item:
 
 ```diff
 Item →
@@ -165,36 +186,57 @@ Item →
         Module
       | ExternCrate
       ...
-+     | Delegation
++     | FnDelegation
++     | ImplDelegation
 ```
 
-Delegation items can be declared in any context where functions with bodies are permitted by the semantic rules. For example, delegation items cannot be declared inside an `extern` block. They are also associated items and may therefore appear in traits and implementations ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)).
+Further on function delegation items are referred to as simply "delegation items".
 
-The delegation item has the form:
+Delegation items are accepted syntactically and semantically in all contexts where functions with bodies are accepted semantically.
+That means modules and blocks, traits, and implementations, but not `extern` blocks. In `extern` blocks delegation items are rejected syntactically.
+Delegation items in traits and implementations are associated items ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)).
+
+Delegation items has the form:
 ```diff
-+ Delegation →
-+     reuse DelegationPath ( BlockExpression | ; )
++ FnDelegation →
++     reuse DelegationPaths ( BlockExpression | ; )
 +
-+ DelegationPath →
-+     Path :: DelegationPathSegment
-+   | Path :: { ( DelegationPathSegment )+ ,? }
-+   | Path :: *
-+
-+ DelegationPathSegment →
-+     PathExprSegment ( as IDENTIFIER )?
++ DelegationPaths →
++     PathExpression ( as IDENTIFIER )?
++     ( PathExpression | QualifiedPathType ) :: { ( PathIdentSegment ( as IDENTIFIER )? )* , ? }
++     ( PathExpression | QualifiedPathType ) :: *
 ```
 
-A delegation item starts with the `reuse` keyword and consists of a path, which may be either simple or qualified and an optional block expression. Their role is discussed in the following sections.
+The grammar is generally modeled after `use` items, with two major differences - qualified paths and generic arguments in paths are supported, and nested lists and globs are not supported.
 
-Delegation item comes in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to expose the delegated function under a different name ([?](#why-is-renaming-supported)).
+A delegation item starts with the `reuse` keyword ([?](#why-reuse)) and consists of a path prefix, which may be either simple or qualified, an optional list or glob suffix, and an optional block expression. Their roles are discussed in the following sections.
 
-Delegation of types and constants is not currently supported. Delegation item doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
+Delegation items come in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)) and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` allows to define the delegated function with a different name ([?](#why-is-renaming-supported)).
+
+Delegation item intentionally doesn't provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). Delegation item intentionally doesn't provide syntax for arguments or return value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-arguments-or-return-value-transformations)).
+
+> [!NOTE]
+>
+> Expression path syntax (with mandatory turbofish) is used for consistency with other value paths, but it's not technically necessary and type path syntax (with optional turbofish) could be supported later if necessary.
+
+Impl delegation items has the form:
+```diff
++ ImplDelegation ->
++    `reuse` `unsafe`? `impl` GenericParams? `!`? TypePath `for` Type
++    WhereClause?
++     ( BlockExpression | ; )
+```
+
+It is the same as for the regular `impl` items, except that the block with associated items is replaced with a target expression block.
+
+TODO: vvv all of this is not about syntax
+
+Delegation of types and constants is not currently supported ([?](#support-delegating-types-and-consts)).
 
 _See the following sections for unresolved questions_:
 
 - [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
 - [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
-- [What keyword should be used?](#what-keyword-should-be-used)
 
 _See the following sections for future possibilities_:
 
@@ -635,6 +677,13 @@ _See the following sections for unresolved questions_:
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
+#### Why `reuse`?
+
+The delegation syntax is generally modeled after `use` items, to be familiar and to choose the limit the syntactic budget.
+So the keyword is similar to `use` too, the callee function is not used directly like with imports, but rather reused to make a new function.
+
+Alternative options like `delegate` or `forward` could also be considered, but would benefit less from user's familiarity with `use` items.
+
 #### Why is list delegation supported?
 
 The syntax cost of supporting it is negligible compared with the benefit. Specifically:
@@ -1052,6 +1101,8 @@ Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inhe
 ## Prior art
 [prior-art]: #prior-art
 
+TODO: difference with previous - for each prior art say how this RFC is different (at high level)
+
 - [Delegation or similar mechanisms in other languages](#delegation-or-similar-mechanisms-in-other-languages)
 - [Related proposals in Rust](#related-proposals-in-Rust)
 - [Crates](#crates)
@@ -1300,10 +1351,6 @@ Taking this into consideration, several design choices are possible:
 We prefer to leave all control to the user while also adding a lint that prevents a generated function from having greater visibility than the callee.
 
 ↩ [Why is visibility manually added instead of being copied from the callee?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)
-
-### What keyword should be used?
-
-The draft uses `reuse`, but other options like `delegate` or `forward` could be considered.
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
