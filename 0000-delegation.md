@@ -1094,18 +1094,17 @@ Rust could instead adopt some form of type embedding (See Go in [Prior art](#pri
 
 #### Language support for newtypes
 
-An alternative to this RFC would be to add language support specifically for the newtype pattern. For example, derive trait implementations for a newtype wrapper based on the traits implemented by its wrapped field, rather than providing a general-purpose delegation mechanism for arbitrary functions.
+An alternative to this RFC would be to add language support specifically for newtypes, allowing requested traits to be derived automatically. This narrower idea has been proposed repeatedly over the years: [rfcs#261](https://github.com/rust-lang/rfcs/issues/261), [rfcs#186](https://github.com/rust-lang/rfcs/pull/186), [rfcs#949](https://github.com/rust-lang/rfcs/pull/949), [rfcs#2242](https://github.com/rust-lang/rfcs/pull/2242), [rfcs#3596](https://github.com/rust-lang/rfcs/issues/3596), [rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951).
 
-This narrower idea has been proposed repeatedly over the years:
-- [rfcs#261](https://github.com/rust-lang/rfcs/issues/261) is a home issue for some proposals since 2014.
-- TODO: https://github.com/rust-lang/rfcs/pull/949
-- TODO: https://github.com/rust-lang/rfcs/pull/2242
-- TODO: https://github.com/rust-lang/rfcs/issues/3596 (dup)
-- TODO: https://github.com/rust-lang/rfcs/pull/3951
+The last attempt ([rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951)) was closed by the lang team with a [message](https://github.com/rust-lang/rfcs/pull/3951#issuecomment-4917471822):
 
-Haskell has a working version of this idea: TODO
+```
+We gave this a brief review in our @rust-lang/lang meeting today.
 
-This gap is already filled at the library level, which weakening the case for a language-level feature: [derive_more](https://crates.io/crates/derive_more) offer `#[derive(..)]` macros for exactly this pattern today.
+The meeting consensus was that we don't really see the need to use a tuple struct as a problem to be solved; we agree that it'd be nice to have easier ways to delegate trait impls and so forth (like a delegation RFC), but adding a new concept (newtype) that is still effectively-a-struct-but-different doesn't feel like enough of a win to warrant expanding our language surface in this way.
+
+Thank you for opening the PR! It's always great to see suggestions and thoughts on how to make Rust better.
+```
 
 #### Inheritance
 
