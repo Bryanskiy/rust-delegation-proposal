@@ -45,6 +45,8 @@ The `Iterator` implementation simply forwards multiple method calls to a field t
 
 This situation highlights a gap in Rust’s ergonomics: while Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
+TODO: emphasis on newtypes
+
 While forwarding to subobject methods remains the main motivating scenario, if we have a general enough mechanism for function call forwarding, we will be able to support other scenarios as well.
 - Inherent method on a type forwarding to a method from trait implementation on the same type.
 - A "reexport" on steroids adding attributes to some existing function definition
@@ -73,7 +75,7 @@ TODO: 2 section:  we have parts that we are sure, we have parts that we implemen
 The following terminology is frequently used in this proposal:
 
 - _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to the specified callee.
-- _target expression_ - an optional block expression that transforms the generate function's first argument before that argument is forwarded to the callee.
+- _target expression_ - an optional block expression which trailing expression transforms some of the generated function's arguments before those arguments are forwarded to the callee; usually, this is the method receiver.
 - _parent context_ - the parent item in which the delegation item appears. This can be a module or block (for free functions), a trait implementation, an inherent implementation, or a trait definition (for associated functions).
 - _desugaring_ - transformation of a delegation item into a regular function definition with signature and body.
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
@@ -86,7 +88,7 @@ This RFC draws on the experimental implementation tracked in [rust-lang/rust#118
 
 Most of the examples in this proposal can be tried on nightly Rust.
 
-The nightly implementation is feature-complete, and may even accept more code than this RFC describes, since its primary purpose was experimentation.
+The nightly implementation is [feature-complete](https://en.wikipedia.org/wiki/Software_release_life_cycle#Feature-complete), and may even accept more code than this RFC describes, since its primary purpose was experimentation.
 Different parts of the implementation may have different levels of design maturity and polishing, and if stabilization of the feature happens it will definitely happen in multiple stages.
 
 Some delegation sub-features like delegation to inherent methods may work in a limited way, since supporting them properly would require compiler reengineering to avoid query cycles. Some of these limitations are discussed throughout the proposal.
