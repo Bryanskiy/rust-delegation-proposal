@@ -1011,7 +1011,7 @@ See the following sections for future possibilities:
 
 > [!WARNING]
 >
-> The idea below is weird, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating an unsubstituted parent parameter as an error ([_Part 1_](What-happens-if-undefined-generic-parameters-remain-after-substitution)) remains the better default.
+> The idea below is weird, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating an unsubstituted parent parameter as an error ([_Part 1_](#what-happens-if-undefined-generic-parameters-remain-after-substitution)) remains the better default.
 
 If an undefined generic parameter remains in the signature or where-clauses after substitution, one possible alternative is to generate an additional generic parameter. Consider the example:
 
