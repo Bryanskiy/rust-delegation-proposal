@@ -1011,7 +1011,7 @@ See the following sections for future possibilities:
 
 > [!WARNING]
 >
-> The idea below is weird, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating an unsubstituted parent parameter as an error ([_Part 1_](What-happens-if-undefined-generic-parameters-remain-after-substitution)) remains the better default.
+> The idea below is weird, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating an unsubstituted parent parameter as an error ([_Part 1_](#what-happens-if-undefined-generic-parameters-remain-after-substitution)) remains the better default.
 
 If an undefined generic parameter remains in the signature or where-clauses after substitution, one possible alternative is to generate an additional generic parameter. Consider the example:
 
@@ -1072,7 +1072,7 @@ TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/t
 
 #### Macros
 
-See [_Prior art_](#prior-art) for a closer look at the two most widely used crates for this, [delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador).
+See [_crates.io/delegate_](#cratesiodelegate) and [_crates.io/ambassador_](#cratesioambassador) in prior art for a closer look at the two most widely used crates for this.
 
 Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: macros do not have access to type information such as the callee's resolved signature or the methods of a trait.
 
@@ -1088,15 +1088,31 @@ Work in this direction is already being explored. See [reflection project goal](
 
 #### Embedding
 
-Rust could instead adopt some form of type embedding (See Go in [Prior art](#prior-art)), where an anonymous field's methods are automatically "promoted" onto the outer struct's method set.
+Rust could instead adopt some form of type embedding, where an anonymous field's methods are automatically "promoted" onto the outer struct's method set.
 
-[rust-lang/rfcs#2431](https://github.com/rust-lang/rfcs/issues/2431), opened in 2018, sketches a mechanism for Rust. The issue was posted as a rough idea seeking feedback, but it received little response and remains open with no further activity.
+Go has a working version of this idea. See [_Prior art: Type embeddings in Go_](#type-embeddings-in-go).
+
+[rfcs#2431](https://github.com/rust-lang/rfcs/issues/2431), opened in 2018, sketches a mechanism for Rust. The issue was posted as a rough idea seeking feedback, but it received little response and remains open with no further activity.
+
+#### Language support for newtypes
+
+An alternative to this RFC would be to add language support specifically for newtypes, allowing requested traits to be derived automatically. This narrower idea has been proposed repeatedly over the years: [rfcs#261](https://github.com/rust-lang/rfcs/issues/261), [rfcs#186](https://github.com/rust-lang/rfcs/pull/186), [rfcs#949](https://github.com/rust-lang/rfcs/pull/949), [rfcs#2242](https://github.com/rust-lang/rfcs/pull/2242), [rfcs#3596](https://github.com/rust-lang/rfcs/issues/3596), [rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951).
+
+The last attempt ([rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951)) was closed by the lang team with a [message](https://github.com/rust-lang/rfcs/pull/3951#issuecomment-4917471822):
+
+
+> We gave this a brief review in our @rust-lang/lang meeting today.
+>
+> The meeting consensus was that we don't really see the need to use a tuple struct as a problem to be solved; we agree that it'd be nice to have easier ways to delegate trait impls and so forth (like a delegation RFC), but adding a new concept (newtype) that is still effectively-a-struct-but-different doesn't feel like enough of a win to warrant expanding our language surface in this way.
+>
+> Thank you for opening the PR! It's always great to see suggestions and thoughts on how to make Rust better.
+
 
 #### Inheritance
 
 Rust could instead adopt some form of inheritance closer to what object-oriented languages provide. However, inheritance has been discussed extensively in the context of Rust, and it is generally not considered aligned with the language's design philosophy.
 
-Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) for why.
+Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing).
 
 ## Prior art
 [prior-art]: #prior-art
@@ -1133,7 +1149,7 @@ class Outer(inner: Inner):
 
 Its selectors line up closely with this proposal's three delegation forms: a single selector corresponds to individual delegation, multiple selectors correspond to list delegation, and a wildcard selector (`*`) corresponds to glob delegation.
 
-`x as y` renames a member on export, the very same `as` keyword this RFC uses for [renaming](#why-is-renaming-supported).
+`x as y` renames a member on export, the very same `as` keyword this RFC uses for renaming.
 
 #### [Delegation in Kotlin](https://kotlinlang.org/docs/delegation.html)
 
@@ -1141,7 +1157,7 @@ Kotlin supports interface delegation natively via a `by` clause on the supertype
 
 Kotlin also lets `Derived` override individual delegated members instead of taking all of them from `b`.
 
-Kotlin [extends](https://kotlinlang.org/docs/delegated-properties.html) the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` and `setValue` operator functions that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here, since Rust has neither properties nor a similar mechanism.
+Kotlin [extends](https://kotlinlang.org/docs/delegated-properties.html) the same `by` keyword to individual properties, e.g. `val x: Int by lazy { computeX() }`. There, the expression after `by` is a delegate object providing `getValue` and `setValue` operator functions that the compiler invokes whenever `x` is read or written. This is a related but distinct feature with no direct equivalent proposed here.
 
 #### [Type embeddings in Go](https://go.dev/ref/spec#Struct_types)
 
