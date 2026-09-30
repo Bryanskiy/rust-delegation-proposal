@@ -242,6 +242,52 @@ _See the following sections for future possibilities_:
 
 - [Support delegating types and consts](#support-delegating-types-and-consts)
 
+### List, glob and impl delegation
+
+List, glob and impl delegations are three kinds of higher level syntactic sugar that expand to individual function delegations at macro expansion time.
+
+#### List delegation
+
+List delegation declares several items at once from a shared path prefix. It desugars to one individual delegation item per name.
+
+```rust
+reuse prefix::<args>::{a, b, c} { target };
+```
+expands to
+```rust
+reuse prefix::<args>::a { target };
+reuse prefix::<args>::b { target };
+reuse prefix::<args>::c { target };
+```
+
+Target expressions, generic arguments and other components are copied at token stream level, making list delegation a macro feature.
+If target expression or a generic argument contains something having an identity, like an item or a closure, then it is also copied as tokens, and multiple different and independent items or closures will be created as a result ([extended rationale](https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2020869823)).
+
+```rust
+reuse prefix::{a, b} {
+    use some::import; // import
+    self.field.map(|x| x.y) // closure
+}
+
+// Desugars to
+reuse prefix::a {
+    use some::import; // import 1
+    self.field.map(|x| x.y) // closure 1
+}
+reuse prefix::b {
+    use some::import; // import 2
+    self.field.map(|x| x.y) // closure 2
+}
+```
+
+Empty list delegations are prohibited ([?](#empty-list-delegation)).
+
+#### Glob delegation
+
+Glob delegation delegates every method of a trait in one go. It's only permitted inside a trait implementations.
+TODO: how it works with defaults </br>
+TODO: `reuse impl Trait` + how it works with override </br>
+
 ### Desugaring of individual delegation
 
 Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is copied the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [_Paths and name resolution_](#paths-and-name-resolution) for details on how the path is resolved).
@@ -333,19 +379,6 @@ The target expression is an optional [block expression](https://doc.rust-lang.or
 
 Inside that block, `self` refers to TODO <br>
 TODO: `self` only in the final expression? Prohibited in statements.
-
-### List delegation
-
-List delegation declares several items at once from a shared path prefix. This desugars to one individual delegation item per name.
-
-TODO
-
-### Glob delegation
-
-Glob delegation delegates every method of a trait in one go. It's only permitted inside a trait implementations.
-
-TODO: how it works with defaults </br>
-TODO: `reuse impl Trait` + how it works with override </br>
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -1408,7 +1441,17 @@ However, there are 2 complexities:
 
 2. TODO: impl
 
-
 Based on these notes we would like to postpone delegation of types and constants.
 
 ↩ [Reference-level explanation](#reference-level-explanation)
+
+### Empty list delegation
+
+Supporting empty list or glob delegations `reuse prefix::{};` or `reuse MarkerTrait::*;` requires keeping some stub for the prefix in AST and HIR after the list/glob expansion, so the prefix can be resolved and checked for stability.
+
+So the implementation has some cost for little benefit, not much sense implementing it unless the feature is definitely accepted and stabilized.
+
+Not resolving the prefix and accepting `reuse nonexistent::path::{};` would be weird.
+Resolving the prefix, but not checking it for stability would be a compatibility hazard (if an unstable API is removed).
+
+↩ [List delegation](#list-delegation)
