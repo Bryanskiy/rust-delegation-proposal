@@ -231,7 +231,7 @@ It is the same as for the regular `impl` items, except that the block with assoc
 
 TODO: vvv all of this is not about syntax
 
-Delegation of types and constants is not currently supported.
+Delegation of types and constants is not currently supported. TODO: add link after links cleanup.
 
 _See the following sections for unresolved questions_:
 
