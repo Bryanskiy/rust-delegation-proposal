@@ -1072,7 +1072,7 @@ TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/t
 
 #### Macros
 
-See [_Prior art_](#prior-art) for a closer look at the two most widely used crates for this, [delegate](https://crates.io/crates/delegate) and [ambassador](https://crates.io/crates/ambassador).
+See [_crates.io/delegate_](#cratesiodelegate) and [_crates.io/ambassador_](#cratesioambassador) in prior art for a closer look at the two most widely used crates for this.
 
 Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: macros do not have access to type information such as the callee's resolved signature or the methods of a trait.
 
@@ -1088,7 +1088,9 @@ Work in this direction is already being explored. See [reflection project goal](
 
 #### Embedding
 
-Rust could instead adopt some form of type embedding (See Go in [Prior art](#prior-art)), where an anonymous field's methods are automatically "promoted" onto the outer struct's method set.
+Rust could instead adopt some form of type embedding, where an anonymous field's methods are automatically "promoted" onto the outer struct's method set.
+
+Go has a working version of this idea. See [_Prior art: Type embeddings in Go_](#type-embeddings-in-go).
 
 [rfcs#2431](https://github.com/rust-lang/rfcs/issues/2431), opened in 2018, sketches a mechanism for Rust. The issue was posted as a rough idea seeking feedback, but it received little response and remains open with no further activity.
 
