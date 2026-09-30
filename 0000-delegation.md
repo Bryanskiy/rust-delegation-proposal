@@ -251,13 +251,13 @@ List, glob and impl delegations are three kinds of higher level syntactic sugar 
 List delegation declares several items at once from a shared path prefix. It desugars to one individual delegation item per name.
 
 ```rust
-reuse prefix::<args>::{a, b, c} { target };
+reuse prefix::<Args>::{a, b, c} { target };
 ```
 expands to
 ```rust
-reuse prefix::<args>::a { target };
-reuse prefix::<args>::b { target };
-reuse prefix::<args>::c { target };
+reuse prefix::<Args>::a { target };
+reuse prefix::<Args>::b { target };
+reuse prefix::<Args>::c { target };
 ```
 
 Target expressions, generic arguments and other components are copied at token stream level, making list delegation a macro feature.
@@ -280,13 +280,62 @@ reuse prefix::b {
 }
 ```
 
-Empty list delegations are prohibited ([?](#empty-list-delegation)).
+Empty list delegations are currently prohibited ([fut](#empty-list-delegation)).
 
 #### Glob delegation
 
-Glob delegation delegates every method of a trait in one go. It's only permitted inside a trait implementations.
-TODO: how it works with defaults </br>
-TODO: `reuse impl Trait` + how it works with override </br>
+Glob delegation allows to delegate to all methods of a trait in one go. It desugars to one individual delegation item per "glob-imported" name.
+
+Glob delegations are only (semantically) allowed inside trait implementations, and the path prefixes in glob delegations can only refer to traits.
+
+```rust
+trait Trait<Args> {
+    fn a() {} // has default body
+    fn b();
+    fn c();
+}
+impl Trait for Type {
+    fn c() {} // explicitly defined name
+    reuse Trait::<Args>::* { target };
+}
+```
+expands to
+```rust
+impl Trait for Type {
+    fn c() {} // explicitly defined name, not delegated
+    reuse prefix::<Args>::a { target }; // delegated, despite the default body
+    reuse prefix::<Args>::b { target };
+}
+```
+
+The set of names for which individual delegation items are produced is determined in the next way:
+- The full set of names defined by the target trait in all namespaces is considered.
+- Names already explicitly defined inside the glob delegation's parent context (trait impl) are filtered away. "Explicitly" here means not by another glob delegation.
+- If any of the remaining names refers to an associated type or constant, an error is reported, for future compatibility with associated type and const delegation  ([fut](#support-delegating-types-and-consts)).
+- Note: the above rules mean that a glob delegation can only be expanded after 1) all macro invocations in its target trait are expanded, and 2) all macro invocations in its parent context impl are expanded, except perhaps other glob delegations.
+
+Note, that individual delegations are still generated for functions having default bodies in the target trait definition.
+This way manual implementations for such functions with default bodies are correctly propagated.
+
+Similarly to list delegations, target expressions, generic arguments and other components are copied at token stream level, making glob delegation a macro feature.
+
+Empty glob delegations are currently prohibited ([fut](#empty-list-delegation)).
+
+### Impl delegation
+
+Impl delegation is a second level syntactic sugar that allows conveniently writing a trait impl with a glob delegation to the same trait inside.
+
+```rust
+reuse impl Trait<Args> for Type { target }
+```
+expands to
+```rust
+impl Trait for Type {
+    reuse Trait::<Args>::* { target };
+}
+```
+
+All the restrictions applying to regular glob delegations apply to glob delegations produced by impl delegations too.
 
 ### Desugaring of individual delegation
 
