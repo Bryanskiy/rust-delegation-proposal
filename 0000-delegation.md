@@ -1098,13 +1098,13 @@ An alternative to this RFC would be to add language support specifically for new
 
 The last attempt ([rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951)) was closed by the lang team with a [message](https://github.com/rust-lang/rfcs/pull/3951#issuecomment-4917471822):
 
-```
-We gave this a brief review in our @rust-lang/lang meeting today.
 
-The meeting consensus was that we don't really see the need to use a tuple struct as a problem to be solved; we agree that it'd be nice to have easier ways to delegate trait impls and so forth (like a delegation RFC), but adding a new concept (newtype) that is still effectively-a-struct-but-different doesn't feel like enough of a win to warrant expanding our language surface in this way.
+> We gave this a brief review in our @rust-lang/lang meeting today.
+>
+> The meeting consensus was that we don't really see the need to use a tuple struct as a problem to be solved; we agree that it'd be nice to have easier ways to delegate trait impls and so forth (like a delegation RFC), but adding a new concept (newtype) that is still effectively-a-struct-but-different doesn't feel like enough of a win to warrant expanding our language surface in this way.
+>
+> Thank you for opening the PR! It's always great to see suggestions and thoughts on how to make Rust better.
 
-Thank you for opening the PR! It's always great to see suggestions and thoughts on how to make Rust better.
-```
 
 #### Inheritance
 
