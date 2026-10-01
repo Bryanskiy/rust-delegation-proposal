@@ -96,12 +96,6 @@ Some delegation sub-features like delegation to inherent methods may work in a l
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-TODO: continue developing examples with more advanced features (which exactly?).
-- target expr removal (btreemap)
-- glob and reuse impl (iterator can be used)
-- binary operator for newtype (btreemap)
-- example motivating disambiguators
-
 Suppose you're writing a `BTreeSet<T>` type as a wrapper around `BTreeMap<T, ()>` which is, incidentally, close to how the standard library's own `BTreeSet` is actually built (real `BTreeSet` also carries an allocator parameter, elided here for simplicity).
 
 ```rust
@@ -130,8 +124,35 @@ impl<T: Hash> Hash for BTreeSet<T> {
 
 The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block which trailing expression replaces the callee's receiver.
 
-`Hash::hash` is a regular path unambiguously identifying the function to which we are forwarding,
+### More about paths and target expressions
+
+The callee doesn't have to be a method of the wrapped type. The `Default` implementation of `BTreeSet` simply calls the `new` function of `BTreeSet` itself:
+
+```rust
+impl<T> Default for BTreeSet<T> {
+    fn default() -> BTreeSet<T> {
+        BTreeSet::new()
+    }
+}
+```
+
+
+With delegation, the same implementation may look like:
+
+```rust
+impl<T> Default for BTreeSet<T> {
+    reuse BTreeSet::<T>::new { self }
+}
+```
+
+TODO:
+- path as disambiguation
+- target expression refers to arg depending on `Self`
+
+TODO: `Hash::hash` is a regular path unambiguously identifying the function to which we are forwarding,
 resolved as any other paths in value namespace. Paths with generic arguments, including fully qualified paths, can also be used.
+
+TODO: When delegating to type-relative paths, it is currently necessary to specify the type's generic arguments.
 
 ### Other parent contexts
 
@@ -143,7 +164,7 @@ impl<T: Ord> BTreeSet<T> {
 }
 ```
 
-When delegating to type-relative paths, it is currently necessary to specify the type's generic arguments.
+TODO: tell that you can delegate from X to X
 
 ### Renaming a delegated method
 
@@ -217,7 +238,25 @@ impl<T: Clone> Clone for BTreeSet<T> {
 }
 ```
 
-Both methods share the target expression `{ self.map }`. The value returned by `Clone::clone` is wrapped, the the target expression is applied to the `source` argument of `Clone::clone_from`, and neither has to be spelled out.
+Both methods share the target expression `{ self.map }`. The value returned by `Clone::clone` is wrapped, the target expression is applied to the `source` argument of `Clone::clone_from`, and neither has to be spelled out.
+
+### Delegating a whole trait
+
+`Clone` has only these two methods, so instead of listing them we can delegate all of them with a glob:
+
+```rust
+impl<T: Clone> Clone for BTreeSet<T> {
+    reuse Clone::* { self.map }
+}
+```
+
+A glob delegation item behaves as if all the methods of the trait were listed, including those with a default implementation. `clone_from` is such a method. A glob delegation can also be written as follows:
+
+```rust
+reuse impl<T: Clone> Clone for BTreeSet<T> { self.map }
+```
+
+This form is purely syntactic sugar for the previous form.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
