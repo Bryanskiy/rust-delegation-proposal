@@ -242,6 +242,102 @@ _See the following sections for future possibilities_:
 
 - [Support delegating types and consts](#support-delegating-types-and-consts)
 
+### List, glob and impl delegation
+
+List, glob and impl delegations are three kinds of higher level syntactic sugar that expand to individual function delegations at macro expansion time.
+
+#### List delegation
+
+List delegation declares several items at once from a shared path prefix. It desugars to one individual delegation item per name.
+
+Target expressions, generic arguments and other components are copied at token stream level, making list delegation a macro feature.
+
+```rust
+reuse prefix::<Args>::{a, b, c} { target };
+```
+expands to
+```rust
+reuse prefix::<Args>::a { target };
+reuse prefix::<Args>::b { target };
+reuse prefix::<Args>::c { target };
+```
+
+If target expression or a generic argument contains something having an identity, like an item or a closure, then it is also copied as tokens, and multiple different and independent items or closures will be created as a result ([extended rationale](https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2020869823)).
+
+```rust
+reuse prefix::{a, b} {
+    use some::import; // import
+    self.field.map(|x| x.y) // closure
+}
+
+// Desugars to
+reuse prefix::a {
+    use some::import; // import 1
+    self.field.map(|x| x.y) // closure 1
+}
+reuse prefix::b {
+    use some::import; // import 2
+    self.field.map(|x| x.y) // closure 2
+}
+```
+
+Empty list delegations are currently prohibited ([fut](#empty-list-delegation)).
+
+#### Glob delegation
+
+Glob delegation allows to delegate to all methods of a trait in one go. It desugars to one individual delegation item per "glob-imported" name.
+
+Glob delegations are only (semantically) allowed inside implementations, and the path prefixes in glob delegations can only refer to traits ([?](#why-glob-restrictions)). Note that there are no similar restrictions on list delegations.
+
+The set of names for which individual delegation items are produced is determined in the next way:
+- The full set of names defined by the target trait in all namespaces is considered.
+- Names already explicitly defined inside the glob delegation's parent context (trait impl) are filtered away. "Explicitly" here means not by another glob delegation.
+- If any of the remaining names refers to an associated type or constant, an error is reported, for future compatibility with associated type and const delegation  ([fut](#support-delegating-types-and-consts)).
+- Note: the above rules mean that a glob delegation can only be expanded after 1) all macro invocations in its target trait are expanded, and 2) all macro invocations in its parent context impl are expanded, except perhaps other glob delegations.
+
+Note, that individual delegations are still generated for functions having default bodies in the target trait definition.
+This way manual implementations for such functions with default bodies are correctly propagated.
+
+Similarly to list delegations, target expressions, generic arguments and other components are copied at token stream level, making glob delegation a macro feature.
+
+```rust
+trait Trait<Args> {
+    fn a() {} // has default body
+    fn b();
+    fn c();
+}
+impl Trait<Args> for Type {
+    fn c() {} // explicitly defined name
+    reuse Trait::<Args>::* { target };
+}
+```
+expands to
+```rust
+impl Trait<Args> for Type {
+    fn c() {} // explicitly defined name, not delegated
+    reuse prefix::<Args>::a { target }; // delegated, despite the default body
+    reuse prefix::<Args>::b { target };
+}
+```
+
+Empty glob delegations are currently prohibited ([fut](#empty-list-delegation)).
+
+### Impl delegation
+
+Impl delegation is a second level syntactic sugar that allows conveniently writing a trait impl with a glob delegation to the same trait inside.
+
+```rust
+reuse impl Trait<Args> for Type { target }
+```
+expands to
+```rust
+impl Trait<Args> for Type {
+    reuse Trait::<Args>::* { target };
+}
+```
+
+All the restrictions applying to regular glob delegations apply to glob delegations produced by impl delegations too.
+
 ### Desugaring of individual delegation
 
 Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is copied the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [_Paths and name resolution_](#paths-and-name-resolution) for details on how the path is resolved).
@@ -333,19 +429,6 @@ The target expression is an optional [block expression](https://doc.rust-lang.or
 
 Inside that block, `self` refers to TODO <br>
 TODO: `self` only in the final expression? Prohibited in statements.
-
-### List delegation
-
-List delegation declares several items at once from a shared path prefix. This desugars to one individual delegation item per name.
-
-TODO
-
-### Glob delegation
-
-Glob delegation delegates every method of a trait in one go. It's only permitted inside a trait implementations.
-
-TODO: how it works with defaults </br>
-TODO: `reuse impl Trait` + how it works with override </br>
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -588,6 +671,21 @@ _See the following sections for future possibilities_:
 - [Name-based resolution as sugar](#name-based-resolution-as-sugar)
 
 ↩ [Paths and name resolution](#paths-and-name-resolution)
+
+#### Why glob restrictions?
+
+Glob delegations are only allowed in implementations, but not in modules or blocks.
+Modules can contain imports, both glob and single, and both make it harder to determine the set of names that would need to be "filtered away" from the glob delegation during its expansion.
+Also the motivation for glob delegations in modules is not as strong as for glob delegations in impls, which can be used to delegate whole trait impls, so the additional complexity doesn't pull its weight.
+
+Glob delegations can only refer to traits, but not to modules.
+Modules can contain imports, both glob and single, and both make it harder to determine the set of names that would be produced by the glob delegation during its expansion.
+Modules typically contain other items rather than just functions, and delegating to them would result in errors with the current rules.
+Similarly, the motivation for glob delegating from modules is not very strong, and the complexity also doesn't pull its weight.
+
+List delegations list all their names explicitly, so they don't need any similar restrictions.
+
+↩ [Glob delegation](#glob-delegation)
 
 #### Why is the delegation resolution the trait being implemented in trait implementations?
 
@@ -1408,7 +1506,17 @@ However, there are 2 complexities:
 
 2. TODO: impl
 
-
 Based on these notes we would like to postpone delegation of types and constants.
 
 ↩ [Reference-level explanation](#reference-level-explanation)
+
+### Empty list delegation
+
+Supporting empty list or glob delegations `reuse prefix::{};` or `reuse MarkerTrait::*;` requires keeping some stub for the prefix in AST and HIR after the list/glob expansion, so the prefix can be resolved and checked for stability.
+
+So the implementation has some cost for little benefit, not much sense implementing it unless the feature is definitely accepted and stabilized.
+
+Not resolving the prefix and accepting `reuse nonexistent::path::{};` would be weird.
+Resolving the prefix, but not checking it for stability would be a compatibility hazard (if an unstable API is removed).
+
+↩ [List delegation](#list-delegation)
