@@ -128,7 +128,7 @@ impl<T: Hash> Hash for BTreeSet<T> {
 }
 ```
 
-The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block which trailing expression replaces the callee's first argument.
+The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block which trailing expression replaces the callee's receiver.
 
 `Hash::hash` is a regular path unambiguously identifying the function to which we are forwarding,
 resolved as any other paths in value namespace. Paths with generic arguments, including fully qualified paths, can also be used.
@@ -168,6 +168,28 @@ impl<T> BTreeSet<T> {
 ```
 
 Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
+
+### Delegating binary operators
+
+So far, the target expression has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. Binary operators are different because both operands have the same “receiver” type. Here is the forwarding implementation of the `PartialEq` trait for `BTreeSet`:
+
+```rust
+impl<T: PartialEq> PartialEq for BTreeSet<T> {
+    fn eq(&self, other: &BTreeSet<T>) -> bool {
+        self.map.eq(&other.map)
+    }
+}
+```
+
+With delegation, the same implementation may look like:
+
+```rust
+impl<T: PartialEq> PartialEq for BTreeSet<T> {
+    reuse PartialEq::eq { self.map }
+}
+```
+
+`BTreeMap::eq` compares two maps, so the target expression must be applied not only to `self`, but also to `other`.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
