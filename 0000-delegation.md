@@ -144,6 +144,8 @@ impl<T> BTreeSet<T> {
 }
 ```
 
+You can also use a delegation item in place of a trait method or even a free function.
+
 ### Delegating several methods at once
 
 Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
@@ -183,7 +185,16 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 }
 ```
 
-With delegation, the `into_iter` implementation may be replaced with `reuse BTreeSet::<T>::iter as into_iter { self }`.
+With delegation, the `into_iter` implementation may be replaced as follows:
+
+```rust
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    reuse BTreeSet::<T>::iter as into_iter { self }
+}
+```
 
 Therefore paths help to unambiguously identify the function to which we are forwarding.
 
