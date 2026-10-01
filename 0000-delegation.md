@@ -359,16 +359,10 @@ It is the same as for the regular `impl` items, except that the block with assoc
 
 TODO: vvv all of this is not about syntax
 
-Delegation of types and constants is not currently supported. TODO: add link after links cleanup.
-
 _See the following sections for unresolved questions_:
 
 - [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
 - [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
-
-_See the following sections for future possibilities_:
-
-- [Support delegating types and consts](#support-delegating-types-and-consts)
 
 ### List, glob and impl delegation
 
@@ -468,7 +462,17 @@ All the restrictions applying to regular glob delegations apply to glob delegati
 
 ### Paths and name resolution
 
-Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)). They can also refer to other delegation items. If a cycle is encountered in the chain of recursive delegations, an error is reported.
+Delegation reuses the existing mechanism of paths to refer to callable items.
+It doesn't introduce any novel name resolution approaches, like resolving a method through its name and the type of target expression.
+
+Paths allow delegation items to unambiguously identify callable items they forward to, including trait methods, trait implementation methods (with qualified paths used to specify `Self`), inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)).
+
+Delegation items can also refer to other delegation items. If a cycle is encountered in such chain of recursive delegations, an error is reported.
+
+Delegation paths are resolved in value namespace, and if the path doesn't refer to a function or associated function, an error is reported.
+Delegation for associated types and constants in particular is not currently supported ([fut](#support-delegating-types-and-consts)).
+
+Type-relative paths are also supported, although the nightly implementation may be limited.
 
 > [!NOTE]
 >
@@ -478,16 +482,16 @@ Paths provide an unambiguous way to identify callable items, including trait met
 > - a type-relative path (e.g., `<T>::default`);
 >
 > Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a _compatible_ signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
->
-> TODO: continue
-
-TODO(move this): callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
-
-TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
 
 _See the following sections for future possibilities_:
 
 - [Name-based resolution as sugar](#name-based-resolution-as-sugar)
+
+TODO: all of this vvv is not about name resolution
+
+TODO(move this): callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+
+TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
 
 ### Desugaring of individual delegation
 
@@ -1636,7 +1640,7 @@ However, there are 2 complexities:
 
 Based on these notes we would like to postpone delegation of types and constants.
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [Reference-level explanation](#paths-and-name-resolution)
 
 ### Empty list delegation
 
