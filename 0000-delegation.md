@@ -96,13 +96,7 @@ Some delegation sub-features like delegation to inherent methods may work in a l
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-TODO: continue developing examples with more advanced features (which exactly?).
-- target expr removal (btreemap)
-- glob and reuse impl (iterator can be used)
-- binary operator for newtype (btreemap)
-- example motivating disambiguators
-
-Suppose you're writing a `BTreeSet<T>` type as a wrapper around `BTreeMap<T, ()>` which is, incidentally, close to how the standard library's own `BTreeSet` is actually built (real `BTreeSet` also carries an allocator parameter, elided here for simplicity).
+Suppose you're writing a `BTreeSet<T>` type as a wrapper around `BTreeMap<T, ()>` which is, incidentally, close to how the standard library's own `BTreeSet` is built (real `BTreeSet` also carries an allocator parameter, elided here for simplicity).
 
 ```rust
 pub struct BTreeSet<T> {
@@ -128,22 +122,41 @@ impl<T: Hash> Hash for BTreeSet<T> {
 }
 ```
 
-The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block which trailing expression replaces the callee's first argument.
-
-`Hash::hash` is a regular path unambiguously identifying the function to which we are forwarding,
-resolved as any other paths in value namespace. Paths with generic arguments, including fully qualified paths, can also be used.
+The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block whose trailing expression is applied to some of the callee’s arguments, usually the receiver.
 
 ### Other parent contexts
 
-Delegation isn't limited to trait methods. `BTreeMap` implements `contains_key` as an inherent method, and `reuse` can forward it just as easily:
+Delegation isn't limited to trait methods. `BTreeMap` implements `len` as an inherent method:
 
 ```rust
-impl<T: Ord> BTreeSet<T> {
-    reuse BTreeMap::<T, ()>::contains_key { self.map }
+impl<T> BTreeSet<T> {
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
 }
 ```
 
-When delegating to type-relative paths, it is currently necessary to specify the type's generic arguments.
+and `reuse` can forward it just as easily:
+
+```rust
+impl<T> BTreeSet<T> {
+    reuse BTreeMap::<T, ()>::len { self.map }
+}
+```
+
+You can also use a delegation item in place of a trait method or even a free function.
+
+### Delegating several methods at once
+
+Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
+
+```rust
+impl<T> BTreeSet<T> {
+    reuse BTreeMap<T, ()>::{len, is_empty, clear, capacity} { self.map }
+}
+```
+
+Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
 
 ### Renaming a delegated method
 
@@ -157,17 +170,133 @@ impl<T> BTreeSet<T> {
 
 You can see that the syntax of `reuse` items is generally modeled after `use` items.
 
-### Delegating several methods at once
+### Paths and callee disambiguation
 
-Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
+One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example, or `BTreeMap::<T, ()>::name` instead of `name` in the others. The reason is that the callee does not have to be a method of the wrapped type. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
 
 ```rust
-impl<T> BTreeSet<T> {
-    reuse BTreeMap<T, ()>::{len, is_empty, clear, capacity} { self.map }
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
 }
 ```
 
-Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
+With delegation, the `into_iter` implementation may be replaced as follows:
+
+```rust
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    reuse BTreeSet::<T>::iter as into_iter { self }
+}
+```
+
+Therefore paths help to unambiguously identify the function to which we are forwarding.
+
+TODO: So you can delegate from X to X
+
+### Methods without receiver
+
+Not every forwarding methods have a receiver. `BTreeSet::default` has no arguments at all:
+
+```rust
+impl<T> Default for BTreeSet<T> {
+    fn default() -> BTreeSet<T> {
+        BTreeSet::new()
+    }
+}
+```
+
+With delegation, the same implementation may look like:
+
+```rust
+impl<T> Default for BTreeSet<T> {
+    reuse BTreeSet::<T>::new as default { self }
+}
+```
+
+TODO: motivate `;` as sugar
+
+```rust
+impl<T> Default for BTreeSet<T> {
+    reuse BTreeSet::<T>::new as default;
+}
+```
+
+TODO
+
+### Delegating binary operators
+
+So far, the target expression has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. Binary operators are different because both operands have the same “receiver” type. Here is the forwarding implementation of the `PartialEq` trait for `BTreeSet`:
+
+```rust
+impl<T: PartialEq> PartialEq for BTreeSet<T> {
+    fn eq(&self, other: &BTreeSet<T>) -> bool {
+        self.map.eq(&other.map)
+    }
+}
+```
+
+With delegation, the same implementation may look like:
+
+```rust
+impl<T: PartialEq> PartialEq for BTreeSet<T> {
+    reuse PartialEq::eq { self.map }
+}
+```
+
+`BTreeMap::eq` compares two maps, so the target expression must be applied not only to `self`, but also to `other`.
+
+### Delegating methods that return the wrapper
+
+The conversion also works the other way round. Here is the forwarding implementation of the `Clone` trait for `BTreeSet`:
+
+```rust
+impl<T: Clone> Clone for BTreeSet<T> {
+    fn clone(&self) -> Self {
+        BTreeSet { map: self.map.clone() }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.map.clone_from(&source.map);
+    }
+}
+```
+
+TODO: explanation
+
+Both methods can be delegated with the list syntax from above:
+
+```rust
+impl<T: Clone> Clone for BTreeSet<T> {
+    reuse Clone::{clone, clone_from} { self.map }
+}
+```
+
+Both methods share the target expression `{ self.map }`. The value returned by `Clone::clone` is wrapped, the target expression is applied to the `source` argument of `Clone::clone_from`, and neither has to be spelled out.
+
+### Delegating a whole trait
+
+`Clone` has only these two methods, so instead of listing them we can delegate all of them with a glob:
+
+```rust
+impl<T: Clone> Clone for BTreeSet<T> {
+    reuse Clone::* { self.map }
+}
+```
+
+A glob delegation item behaves as if all the methods of the trait were listed, including those with a default implementation. `clone_from` is such a method. A glob delegation can also be written as follows:
+
+```rust
+reuse impl<T: Clone> Clone for BTreeSet<T> { self.map }
+```
+
+This form is purely syntactic sugar for the previous form.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
