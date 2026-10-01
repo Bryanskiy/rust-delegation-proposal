@@ -191,6 +191,34 @@ impl<T: PartialEq> PartialEq for BTreeSet<T> {
 
 `BTreeMap::eq` compares two maps, so the target expression must be applied not only to `self`, but also to `other`.
 
+### Delegating methods that return the wrapper
+
+The conversion also works the other way round. Here is the forwarding implementation of the `Clone` trait for `BTreeSet`:
+
+```rust
+impl<T: Clone> Clone for BTreeSet<T> {
+    fn clone(&self) -> Self {
+        BTreeSet { map: self.map.clone() }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.map.clone_from(&source.map);
+    }
+}
+```
+
+TODO: explanation
+
+Both methods can be delegated with the list syntax from above:
+
+```rust
+impl<T: Clone> Clone for BTreeSet<T> {
+    reuse Clone::{clone, clone_from} { self.map }
+}
+```
+
+Both methods share the target expression `{ self.map }`. The value returned by `Clone::clone` is wrapped, the the target expression is applied to the `source` argument of `Clone::clone_from`, and neither has to be spelled out.
+
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
