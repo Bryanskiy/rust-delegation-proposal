@@ -148,7 +148,7 @@ You can see that the syntax of `reuse` items is generally modeled after `use` it
 
 ### Paths and callee disambiguation
 
-One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example. The reason is that the callee does not have to be a method of the wrapped type. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
+One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example, or `BTreeMap::<T, ()>::name` instead of `name` in the others. The reason is that the callee does not have to be a method of the wrapped type. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
 
 ```rust
 impl<'a, T> IntoIterator for &'a BTreeSet<T> {
@@ -195,7 +195,7 @@ With delegation, the same implementation may look like:
 
 ```rust
 impl<T> Default for BTreeSet<T> {
-    reuse BTreeSet::<T>::new { self }
+    reuse BTreeSet::<T>::new as default { self }
 }
 ```
 
@@ -203,7 +203,7 @@ TODO: motivate `;` as sugar
 
 ```rust
 impl<T> Default for BTreeSet<T> {
-    reuse BTreeSet::<T>::new;
+    reuse BTreeSet::<T>::new as default;
 }
 ```
 
