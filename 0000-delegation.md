@@ -126,13 +126,35 @@ The `reuse` item is a delegation item desugaring into a function definition, `Ha
 
 ### Other parent contexts
 
-Delegation isn't limited to trait methods. `BTreeMap` implements `contains_key` as an inherent method, and `reuse` can forward it just as easily:
+Delegation isn't limited to trait methods. `BTreeMap` implements `len` as an inherent method:
 
 ```rust
-impl<T: Ord> BTreeSet<T> {
-    reuse BTreeMap::<T, ()>::contains_key { self.map }
+impl<T> BTreeSet<T> {
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
 }
 ```
+
+and `reuse` can forward it just as easily:
+
+```rust
+impl<T> BTreeSet<T> {
+    reuse BTreeMap::<T, ()>::len { self.map }
+}
+```
+
+### Delegating several methods at once
+
+Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
+
+```rust
+impl<T> BTreeSet<T> {
+    reuse BTreeMap<T, ()>::{len, is_empty, clear, capacity} { self.map }
+}
+```
+
+Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
 
 ### Renaming a delegated method
 
@@ -163,21 +185,9 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 
 With delegation, the `into_iter` implementation may be replaced with `reuse BTreeSet::<T>::iter as into_iter { self }`.
 
-Therefore paths might be used to unambiguously identify the function to which we are forwarding.
+Therefore paths help to unambiguously identify the function to which we are forwarding.
 
 TODO: So you can delegate from X to X
-
-### Delegating several methods at once
-
-Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
-
-```rust
-impl<T> BTreeSet<T> {
-    reuse BTreeMap<T, ()>::{len, is_empty, clear, capacity} { self.map }
-}
-```
-
-Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
 
 ### Methods without receiver
 
