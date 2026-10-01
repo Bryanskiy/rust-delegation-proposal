@@ -450,7 +450,7 @@ impl Trait<Args> for Type {
 
 Empty glob delegations are currently prohibited ([fut](#empty-list-delegation)).
 
-### Impl delegation
+#### Impl delegation
 
 Impl delegation is a second level syntactic sugar that allows conveniently writing a trait impl with a glob delegation to the same trait inside.
 
@@ -465,6 +465,29 @@ impl Trait<Args> for Type {
 ```
 
 All the restrictions applying to regular glob delegations apply to glob delegations produced by impl delegations too.
+
+### Paths and name resolution
+
+Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)). They can also refer to other delegation items. If a cycle is encountered in the chain of recursive delegations, an error is reported.
+
+> [!NOTE]
+>
+> Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows:
+> - a path to a free function (e.g., `module::func`).
+> - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
+> - a type-relative path (e.g., `<T>::default`);
+>
+> Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a _compatible_ signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
+>
+> TODO: continue
+
+TODO(move this): callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+
+TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
+
+_See the following sections for future possibilities_:
+
+- [Name-based resolution as sugar](#name-based-resolution-as-sugar)
 
 ### Desugaring of individual delegation
 
@@ -505,29 +528,6 @@ WhereClause
 - `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature.
 - The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
 - TODO: return value transformations
-
-### Paths and name resolution
-
-Paths provide an unambiguous way to identify callable items, including trait methods, trait implementation methods, inherent methods and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)). They can also refer to other delegation items. If a cycle is encountered in the chain of recursive delegations, an error is reported.
-
-> [!NOTE]
->
-> Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows:
-> - a path to a free function (e.g., `module::func`).
-> - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
-> - a type-relative path (e.g., `<T>::default`);
->
-> Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a _compatible_ signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
->
-> TODO: continue
-
-TODO(move this): callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
-
-TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
-
-_See the following sections for future possibilities_:
-
-- [Name-based resolution as sugar](#name-based-resolution-as-sugar)
 
 ### Generics remapping
 
