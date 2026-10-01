@@ -96,7 +96,7 @@ Some delegation sub-features like delegation to inherent methods may work in a l
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Suppose you're writing a `BTreeSet<T>` type as a wrapper around `BTreeMap<T, ()>` which is, incidentally, close to how the standard library's own `BTreeSet` is actually built (real `BTreeSet` also carries an allocator parameter, elided here for simplicity).
+Suppose you're writing a `BTreeSet<T>` type as a wrapper around `BTreeMap<T, ()>` which is, incidentally, close to how the standard library's own `BTreeSet` is built (real `BTreeSet` also carries an allocator parameter, elided here for simplicity).
 
 ```rust
 pub struct BTreeSet<T> {
@@ -122,37 +122,7 @@ impl<T: Hash> Hash for BTreeSet<T> {
 }
 ```
 
-The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block which trailing expression replaces the callee's receiver.
-
-### More about paths and target expressions
-
-The callee doesn't have to be a method of the wrapped type. The `Default` implementation of `BTreeSet` simply calls the `new` function of `BTreeSet` itself:
-
-```rust
-impl<T> Default for BTreeSet<T> {
-    fn default() -> BTreeSet<T> {
-        BTreeSet::new()
-    }
-}
-```
-
-
-With delegation, the same implementation may look like:
-
-```rust
-impl<T> Default for BTreeSet<T> {
-    reuse BTreeSet::<T>::new { self }
-}
-```
-
-TODO:
-- path as disambiguation
-- target expression refers to arg depending on `Self`
-
-TODO: `Hash::hash` is a regular path unambiguously identifying the function to which we are forwarding,
-resolved as any other paths in value namespace. Paths with generic arguments, including fully qualified paths, can also be used.
-
-TODO: When delegating to type-relative paths, it is currently necessary to specify the type's generic arguments.
+The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block whose trailing expression is applied to some of the callee’s arguments, usually the receiver.
 
 ### Other parent contexts
 
@@ -163,8 +133,6 @@ impl<T: Ord> BTreeSet<T> {
     reuse BTreeMap::<T, ()>::contains_key { self.map }
 }
 ```
-
-TODO: tell that you can delegate from X to X
 
 ### Renaming a delegated method
 
@@ -178,6 +146,27 @@ impl<T> BTreeSet<T> {
 
 You can see that the syntax of `reuse` items is generally modeled after `use` items.
 
+### Paths and callee disambiguation
+
+One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example. The reason is that the callee does not have to be a method of the wrapped type. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
+
+```rust
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+```
+
+With delegation, the `into_iter` implementation may be replaced with `reuse BTreeSet::<T>::iter as into_iter { self }`.
+
+Therefore paths might be used to unambiguously identify the function to which we are forwarding.
+
+TODO: So you can delegate from X to X
+
 ### Delegating several methods at once
 
 Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
@@ -189,6 +178,36 @@ impl<T> BTreeSet<T> {
 ```
 
 Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
+
+### Methods without receiver
+
+Not every forwarding methods have a receiver. `BTreeSet::default` has no arguments at all:
+
+```rust
+impl<T> Default for BTreeSet<T> {
+    fn default() -> BTreeSet<T> {
+        BTreeSet::new()
+    }
+}
+```
+
+With delegation, the same implementation may look like:
+
+```rust
+impl<T> Default for BTreeSet<T> {
+    reuse BTreeSet::<T>::new { self }
+}
+```
+
+TODO: motivate `;` as sugar
+
+```rust
+impl<T> Default for BTreeSet<T> {
+    reuse BTreeSet::<T>::new;
+}
+```
+
+TODO
 
 ### Delegating binary operators
 
