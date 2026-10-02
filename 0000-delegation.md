@@ -321,9 +321,8 @@ Item →
 
 Further on function delegation items are referred to as simply "delegation items".
 
-Delegation items are accepted syntactically and semantically in all contexts where functions with bodies are accepted semantically.
-That means modules and blocks, traits, and implementations, but not `extern` blocks. In `extern` blocks delegation items are rejected syntactically.
-Delegation items in traits and implementations are associated items ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)).
+Delegation items are accepted in all contexts where functions with bodies are accepted.
+That means modules and blocks, traits, and implementations, but not `extern` blocks ([?](#why-can-delegation-items-be-declared-in-any-position)). Like other items, delegation items may be annotated with a visibility modifier ([?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)) and may have attributes applied to them ([?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)).
 
 Delegation items has the form:
 ```diff
