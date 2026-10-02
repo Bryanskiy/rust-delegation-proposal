@@ -342,7 +342,7 @@ That means modules and blocks, traits, and implementations, but not `extern` blo
 Delegation items has the form:
 ```diff
 + FnDelegation →
-+     reuse DelegationPaths ( BlockExpression | ; )
++     reuse DelegationPaths ( BlockExpressionNoInnerAttributes | ; )
 +
 + DelegationPaths →
 +     PathExpression ( as IDENTIFIER )?
@@ -372,20 +372,13 @@ Impl delegation items has the form:
 
 It is the same as for the regular `impl` items, except that the block with associated items is replaced with an expression block.
 
-TODO: vvv all of this is not about syntax
-
-_See the following sections for unresolved questions_:
-
-- [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
-- [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
-
 ### List, glob and impl delegation
 
 List, glob and impl delegations are three kinds of higher level syntactic sugar that expand to individual function delegations at macro expansion time.
 
 #### List delegation
 
-List delegation declares several items at once from a shared path prefix. It desugars to one individual delegation item per name.
+List delegation defines several items at once from a shared path prefix. It desugars to one individual delegation item per name.
 
 Target expressions, generic arguments and other components are copied at token stream level, making list delegation a macro feature.
 
@@ -491,28 +484,122 @@ _See the following sections for future possibilities_:
 
 - [Name-based resolution as sugar](#name-based-resolution-as-sugar)
 
-TODO: all of this vvv is not about name resolution
+### Desugaring of individual delegation: signature
 
-TODO(move this): callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+All the other delegation forms desugar into individual delegations as specified above, here we'll describe how individual delegations desugar further into regular functions.
 
-TODO(move this): Delegation of variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
+Individual delegation defines exactly one new function item that forwards to exactly one callee addressed by a path.
 
-### Desugaring of individual delegation
+The function from which the delegated item's signature is copied is called _delegation resolution_.
+For delegations defined in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [_Paths and name resolution_](#paths-and-name-resolution) for details on how the path is resolved).
 
-Individual delegation is the simplest case: it declares exactly one new item that forwards to exactly one callee named by a path. We name the function from which the delegated item's information is copied the delegation resolution. For delegation declared in a trait implementation, the delegation resolution is the corresponding trait method ([?](#why-is-the-delegation-resolution-the-trait-being-implemented-in-trait-implementations)). In all other cases, it is the item resolved by the path. (See [_Paths and name resolution_](#paths-and-name-resolution) for details on how the path is resolved).
+The generated function header for an individual delegation have the form:
+
+```rust
+#[attrs]
+pub(vis) reuse path as name { target_expr }
+```
+desugars to
+```rust
+#[attrs]
+pub(vis) FunctionQualifiers fn name<GenericParams>(..., argN: ArgN, ...) -> FunctionReturnType
+WhereClauses
+{
+    /* body */
+}
+```
+
+- Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site, if any, plus [default attributes](#default-attributes).
+- Visibility (`pub(vis)`) is exactly as specified by the user at the delegation site.
+- Function qualifiers(`FunctionQualifiers` - safety, constness, async-ness, ABI) are copied unchanged from the delegation resolution.
+  - None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-copied-unchanged)).
+- If the delegation item has `as name` clause, then `name` is used as the generated function's name, otherwise the final segment of `path` is used.
+- Generic parameters(`GenericParams`) and where clauses (`WhereClauses`) are copied from the delegation resolution and remapped as described in [_Generics remapping_](#Generics-remapping).
+- Function parameters (e.g. `argN: ArgN`) are copied from the delegation resolution:
+  - Generic parameters appearing in the function arguments are remapped as described in [_Generics remapping_](#Generics-remapping).
+  - `self` parameter turns into a regular first parameter if the parent context is not an impl or trait.
+  - Delegating to C-variadic functions is not supported ([?](#why-is-delegation-of-variadic-functions-not-supported)).
+- Return type (`FunctionReturnType`) is copied from the delegation resolution:
+  - Generic parameters appearing in the return type are remapped as described in [_Generics remapping_](#Generics-remapping).
 
 > [!NOTE]
 >
-> Desugaring happens mainly during [AST lowering](https://rustc-dev-guide.rust-lang.org/hir/lowering.html). This is because once [HIR](https://rustc-dev-guide.rust-lang.org/hir.html) construction is complete the crate becomes immutable and code modification is no longer possible at that stage.
+> Desugaring happens mainly during [AST lowering](https://rustc-dev-guide.rust-lang.org/hir/lowering.html). This is because once [HIR](https://rustc-dev-guide.rust-lang.org/hir.html) construction is complete the crate becomes immutable and code modification is no longer possible at that stage. The types and generics are then processed further during HIR -> Ty lowering.
 
-The generated function body for an individual delegation have the form:
+_See the following sections for unresolved questions_:
 
-```
+- [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
+- [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
+
+#### Default attributes
+
+An `#[inline]` attribute is implicitly added to the generated function, unless the delegation item already has some `inline` attribute.
+
+A `#[must_use]` attribute is implicitly added to the generated function if the delegation resolution has it.
+In the future some other attributes may also be "inherited" similarly to `must_use`.
+
+#### Generics remapping
+
+As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to what would be written by hand (e.g. the callee's parent parameters don't automatically make sense once copied into a different scope).
+
+The delegation resolution's signature may contain:
+- Concrete types, these stay the same when copied to the generated item
+- Own generic parameters (generic parameters defined directly by the delegation resolution item), these are
+  - either replaced with concrete types
+  - or replaced with fresh generic parameters
+- Parent generic parameters, including `Self` (generic parameters defined by the delegation resolution's parent trait or impl), these are
+  - either replaced with concrete types
+  - or ??? in trait impls
+  - or produce an error
+
+The following procedure is used for remapping own parameters:
+
+1. First, uses of generic parameters in the signature and where-clauses are replaced with ...
+    2. generic arguments provided by the user in the callee path (last segment):
+      3. Generic arguments child segment are used to substitute delegation resolution's own parameters ([?](#why-might-child-parameters-need-to-be-substituted)).
+      4. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a parameter should not be substituted. ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
+      5. When no argument is specified it is treated as `_`/`'_` was written.
+3. Copied parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
+
+The following procedure is used for remapping parent parameters:
+
+1. First, uses of generic parameters in the signature and where-clauses are replaced with ...
+    1. ... either generic arguments from the implementation header, for delegation items inside trait implementations
+      - This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
+    2. ... or generic arguments provided by the user in the callee path:
+      1. `Self` type in the path is not substituted ([?](#why-is-self-type-not-substituted)).
+      2. Generic arguments in the parent segment are used to substitute delegation resolution's parent parameters ([?](#why-might-parent-parameters-need-to-be-substituted)).
+      4. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a parameter should not be substituted. ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
+      5. When no argument is specified it is treated as `_`/`'_` was written.
+2. If any parent parameters in the signature or where-clauses remain unsubstituted, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
+
+Generic arguments in the delegation path are "elaborated" in the same way as in any other expression paths.
+Generic arguments that are not specified explicitly are either filled with their defaults, or replaced with "infer" types `_` (or infer lifetimes).
+Any infer type (or lifetime) in the elaborated path will either result in a fresh generic parameter definition in the generated item, or report an error.
+
+TODO: Why do we need to substitute all parent generics in type-relative paths?
+
+_See the following sections for future possibilities_:
+
+- [More sophisticated inference of generic parameters](#more-sophisticated-inference-of-generic-parameters)
+
+#### `Self` identification and remapping
+
+TODO
+
+### Desugaring of individual delegation: body
+
+TODO:
+- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
+- `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature.
+- The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
+- TODO: return value transformations
+
+```rust
 #[attrs]
 pub(vis) FunctionQualifiers fn name<GenericParams>(..., argN: ArgN, ...) FunctionReturnType
-WhereClause
+WhereClauses
 {
-    #![attrs]
     target_expr_stmt_1;
     ....
     target_expr_stmt_n;
@@ -520,45 +607,7 @@ WhereClause
 }
 ```
 
-- Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site, if any, plus default attributes.
-- Inner attributes (`#![attrs]`) are exactly those specified by the user inside target expression, if any. TODO: or, if prohibited, move to rationale
-- Visibility `(pub(vis))` is exactly as specified by the user at the delegation site.
-- Function qualifiers(`FunctionQualifiers`) are copied unchanged from the delegation resolution. None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-copied-unchanged)).
-- The function name (`name`) is the identifier following `as` keyword, or, if no `as` clause is specified, the final segment of `path`.
-- Function arguments (e.g. `argN: ArgN`) are copied from the delegation resolution:
-  - Generic parameters appearing in the function arguments are remapped as described in [_Generics remapping_](#Generics-remapping).
-  - TODO: depending on `Self` type
-- Return type (`FunctionReturnType`) is copied from the delegation resolution:
-  - Generic parameters appearing in the return type are remapped as described in [_Generics remapping_](#Generics-remapping).
-  - TODO: depending on `Self` type
-- Generic parameters(`GenericParams`) and where clause(`WhereClause`) are copied from the delegation resolution and remapped as described in [_Generics remapping_](#Generics-remapping).
-- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
-- `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature.
-- The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
-- TODO: return value transformations
-
-### Generics remapping
-
-As mentioned earlier, a delegation item does not introduce its own generic parameters. Instead, they are copied from the delegation resolution. However, we need to remap the generics so that the copied signature and where-clauses remain semantically equivalent to what would be written by hand (e.g. a callee's parent parameters don't automatically make sense once copied into a different scope).
-
-The following procedure is used for remapping:
-
-1. First, generic parameters are substituted in the signature and where-clauses:
-   1. For delegation items inside trait implementations, using the generic arguments provided in the implementation header. This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
-   2. For other cases, using the generic arguments provided by the user in the callee path:
-      1. `Self` type in the path is not substituted ([?](#why-is-self-type-not-substituted)).
-      2. Generic arguments in the parent segment are used to substitute delegation resolution's parent parameters ([?](#why-might-parent-parameters-need-to-be-substituted)).
-      3. Generic arguments child segment are used to substitute delegation resolution's own parameters ([?](#why-might-child-parameters-need-to-be-substituted)).
-      4. Besides generic argument user can use single infer (`'_` for lifetimes or `_` for types and consts) to indicate that a parameter should not be substituted. ([?](#why-inference-variables-are-allowed-in-paths)). Nested infers are not allowed ([?](#why-nested-inference-variables-are-not-allowed-in-paths)).
-      5. When no argument is specified it is treated as `_`/`'_` was written.
-2. If any non-own parameters in the signature or where-clauses remain unsubstituted, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
-3. Copied parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
-
-TODO: Why do we need to substitute all parent generics in type-relative paths?
-
-_See the following sections for future possibilities_:
-
-- [More sophisticated inference of generic parameters](#more-sophisticated-inference-of-generic-parameters)
+TODO: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
 
 ### Target expression
 
@@ -827,7 +876,7 @@ List delegations list all their names explicitly, so they don't need any similar
 
 #### Why is the delegation resolution the trait being implemented in trait implementations?
 
-With _“Refined trait implementations”_ RFC ([rust-lang/rfcs#3245](https://github.com/rust-lang/rfcs/pull/3245))  an implementation signature may be more specific than the one declared in the trait.
+With _“Refined trait implementations”_ RFC ([rust-lang/rfcs#3245](https://github.com/rust-lang/rfcs/pull/3245)) an implementation signature may be more specific than the one declared in the trait.
 
 If delegation item is in a trait implementation (e.g. `impl Trait for Type { /*delegate foo*/ }`) we have two opportunities:
 
@@ -1044,7 +1093,7 @@ In the feedback to the [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) 
 
 TODO: find github issue
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-signature)
 
 #### Why is `Self` type not substituted?
 
