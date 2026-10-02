@@ -124,55 +124,9 @@ impl<T: Hash> Hash for BTreeSet<T> {
 
 The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block whose trailing expression is applied to some of the callee’s arguments, usually the receiver.
 
-### Other parent contexts
-
-Delegation isn't limited to trait methods. `BTreeMap` implements `len` as an inherent method:
-
-```rust
-impl<T> BTreeSet<T> {
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-}
-```
-
-and `reuse` can forward it just as easily:
-
-```rust
-impl<T> BTreeSet<T> {
-    reuse BTreeMap::<T, ()>::len { self.map }
-}
-```
-
-You can also use a delegation item in place of a trait method or even a free function.
-
-### Delegating several methods at once
-
-Listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
-
-```rust
-impl<T> BTreeSet<T> {
-    reuse BTreeMap<T, ()>::{len, is_empty, clear, capacity} { self.map }
-}
-```
-
-Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
-
-### Renaming a delegated method
-
-Sometimes the callee's name isn't the name you want on your own type. `contains_key` reads naturally on a map, but for a set `contains` is clearer. Adding `as new_name` after the callee renames the generated method:
-
-```rust
-impl<T> BTreeSet<T> {
-    reuse BTreeMap::<T, ()>::contains_key as contains { self.map }
-}
-```
-
-You can see that the syntax of `reuse` items is generally modeled after `use` items.
-
 ### Paths and callee disambiguation
 
-One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example, or `BTreeMap::<T, ()>::name` instead of `name` in the others. The reason is that the callee does not have to be a method of the wrapped type, so the name alone would not tell which function is meant. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
+One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the previous example. The reason is that the callee does not have to be a method of the wrapped type, so the name alone would not tell which function is meant. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
 
 ```rust
 impl<'a, T> IntoIterator for &'a BTreeSet<T> {
@@ -196,15 +150,59 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 }
 ```
 
-Here, the `as into_iter` part gives the generated function the name the trait requires.
+Here, the `as into_iter` part gives the generated function the name the trait requires (see [_Renaming a delegated method_](#renaming-a-delegated-method) below). The target expression `{ self }` just passes the receiver through unchanged.
 
 So, paths help to unambiguously identify the function to which we are forwarding. It also worth mentioning that when delegating to type-relative paths, as with `BTreeSet::<T>::iter` above, it is currently necessary to specify the type's generic arguments. But the limitation could be fixed in the future.
 
-Note also that the parent context and the callee are independent of each other. Together with [Other parent contexts](#other-parent-contexts) you can delegate from any kind of function to any kind of function. For example, a free function can delegate to an inherent method.
+### Other parent contexts
+
+Once delegation is allowed to any kind of function, whether an inherent method, a trait method, or a free function, there would be no need to restrict the parent context either. For example, `BTreeMap` implements `len` as an inherent method:
+
+```rust
+impl<T> BTreeSet<T> {
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+}
+```
+
+and `reuse` can forward it just as easily:
+
+```rust
+impl<T> BTreeSet<T> {
+    reuse BTreeMap::<T, ()>::len { self.map }
+}
+```
+
+Note also that the parent context and the callee are independent of each other. Together with [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) you can delegate from any kind of function to any kind of function. For example, a free function can delegate to an inherent method.
+
+### Delegating several methods at once
+
+The main advantage of delegation comes with the ability to delegate multiple items at once. For example, listing out `is_empty`, `clear` and `len` as three separate reuse items would still be three lines whose only real difference is the method name. List delegation collapses them into one:
+
+```rust
+impl<T> BTreeSet<T> {
+    reuse BTreeMap<T, ()>::{len, is_empty, clear, capacity} { self.map }
+}
+```
+
+Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
+
+### Renaming a delegated method
+
+Sometimes the callee's name isn't the name you want on your own type. `contains_key` reads naturally on a map, but for a set `contains` is clearer. Adding `as new_name` after the callee renames the generated method:
+
+```rust
+impl<T> BTreeSet<T> {
+    reuse BTreeMap::<T, ()>::contains_key as contains { self.map }
+}
+```
+
+You can see that the syntax of `reuse` items is generally modeled after `use` items.
 
 ### Methods without receiver
 
-Not every forwarding methods have a receiver. `BTreeSet::default` has no arguments at all:
+So far, the target expression has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. But not every forwarded method has a receiver. `Default::default` has no arguments at all: the `Default` implementation of `BTreeSet` just calls the inherent function `new`:
 
 ```rust
 impl<T> Default for BTreeSet<T> {
@@ -222,11 +220,13 @@ impl<T> Default for BTreeSet<T> {
 }
 ```
 
-TODO: explain
+The target expression is applied to the TODO, and there are none here, so `{ self }` has nothing to do.
+
+TODO: this semantics will allow to delegation methods without receiver inside list and globs delegations.
 
 ### Omitting block expression
 
-In [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) and [_Methods without receiver_](#methods-without-receiver) sections we saw that the target expression `{ self }` simply passes the receiver through unchanged. In such cases it can be left out entirely, and the item ends with a semicolon instead:
+In [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) and [_Methods without receiver_](#methods-without-receiver) sections we saw that the target expression `{ self }` is used. In such cases, it carries no information and can be omitted entirely, with the item ending in a semicolon instead:
 
 ```rust
 impl<'a, T> IntoIterator for &'a BTreeSet<T> {
@@ -245,9 +245,11 @@ impl<T> Default for BTreeSet<T> {
 }
 ```
 
+This is purely syntactic sugar: `reuse path;` stands for `reuse path { self }`.
+
 ### Delegating binary operators
 
-So far, the target expression has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. Binary operators are different because both operands have the same “receiver” type. Here is the forwarding implementation of the `PartialEq` trait for `BTreeSet`:
+Binary operators are also different in that both operands have the same “receiver” type. Here is the forwarding implementation of the `PartialEq` trait for `BTreeSet`:
 
 ```rust
 impl<T: PartialEq> PartialEq for BTreeSet<T> {
@@ -283,9 +285,7 @@ impl<T: Clone> Clone for BTreeSet<T> {
 }
 ```
 
-TODO: explanation
-
-Both methods can be delegated with the list syntax from above:
+So, both methods can be delegated with the list syntax from above:
 
 ```rust
 impl<T: Clone> Clone for BTreeSet<T> {
