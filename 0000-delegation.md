@@ -200,7 +200,7 @@ Here, the `as into_iter` part gives the generated function the name the trait re
 
 So, paths help to unambiguously identify the function to which we are forwarding. It also worth mentioning that when delegating to type-relative paths, as with `BTreeSet::<T>::iter` above, it is currently necessary to specify the type's generic arguments. But the limitation could be fixed in the future.
 
-Note also that the parent context and the callee are independent of each other. Together with [Other parent contexts](#other-parent-contexts). In other words, you can delegate from any kind of function to any kind of function. For example, a free function can delegate to an inherent method.
+Note also that the parent context and the callee are independent of each other. Together with [Other parent contexts](#other-parent-contexts) you can delegate from any kind of function to any kind of function. For example, a free function can delegate to an inherent method.
 
 ### Methods without receiver
 
