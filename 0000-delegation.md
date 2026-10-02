@@ -172,7 +172,7 @@ You can see that the syntax of `reuse` items is generally modeled after `use` it
 
 ### Paths and callee disambiguation
 
-One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example, or `BTreeMap::<T, ()>::name` instead of `name` in the others. The reason is that the callee does not have to be a method of the wrapped type. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
+One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example, or `BTreeMap::<T, ()>::name` instead of `name` in the others. The reason is that the callee does not have to be a method of the wrapped type, so the name alone would not tell which function is meant. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
 
 ```rust
 impl<'a, T> IntoIterator for &'a BTreeSet<T> {
@@ -196,9 +196,11 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 }
 ```
 
-Therefore paths help to unambiguously identify the function to which we are forwarding.
+Here, the `as into_iter` part gives the generated function the name the trait requires.
 
-TODO: So you can delegate from X to X
+So, paths help to unambiguously identify the function to which we are forwarding. It also worth mentioning that when delegating to type-relative paths, as with `BTreeSet::<T>::iter` above, it is currently necessary to specify the type's generic arguments. But the limitation could be fixed in the future.
+
+Note also that the parent context and the callee are independent of each other. Together with [Other parent contexts](#other-parent-contexts) you can delegate from any kind of function to any kind of function. For example, a free function can delegate to an inherent method.
 
 ### Methods without receiver
 
@@ -220,15 +222,28 @@ impl<T> Default for BTreeSet<T> {
 }
 ```
 
-TODO: motivate `;` as sugar
+TODO: explain
+
+### Omitting block expression
+
+In [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) and [_Methods without receiver_](#methods-without-receiver) sections we saw that the target expression `{ self }` simply passes the receiver through unchanged. In such cases it can be left out entirely, and the item ends with a semicolon instead:
+
+```rust
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    reuse BTreeSet::<T>::iter as into_iter;
+}
+```
+
+and
 
 ```rust
 impl<T> Default for BTreeSet<T> {
     reuse BTreeSet::<T>::new as default;
 }
 ```
-
-TODO
 
 ### Delegating binary operators
 
