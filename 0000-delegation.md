@@ -91,7 +91,7 @@ Most of the examples in this proposal can be tried on nightly Rust.
 The nightly implementation is [feature-complete](https://en.wikipedia.org/wiki/Software_release_life_cycle#Feature-complete), and may even accept more code than this RFC describes, since its primary purpose was experimentation.
 Different parts of the implementation may have different levels of design maturity and polishing, and if stabilization of the feature happens it will definitely happen in multiple stages.
 
-Some delegation sub-features like delegation to inherent methods may work in a limited way, since supporting them properly would require compiler reengineering to avoid query cycles. Some of these limitations are discussed throughout the proposal.
+Some delegation sub-features like delegation to inherent methods may work in a limited way, since supporting them properly would require compiler reengineering to avoid query cycles ([impl](#supporting-type-relative-paths)). Some of these limitations are discussed throughout the proposal.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -462,9 +462,7 @@ All the restrictions applying to regular glob delegations apply to glob delegati
 
 ### Paths and name resolution
 
-Delegation reuses the existing mechanism of paths to refer to callable items.
-It doesn't introduce any novel name resolution approaches, like resolving a method through its name and the type of target expression.
-
+Delegation reuses the existing mechanism of paths and doesn't introduce any novel name resolution approaches ([fut](#name-based-resolution-as-sugar)).
 Paths allow delegation items to unambiguously identify callable items they forward to, including trait methods, trait implementation methods (with qualified paths used to specify `Self`), inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)).
 
 Delegation items can also refer to other delegation items. If a cycle is encountered in such chain of recursive delegations, an error is reported.
@@ -472,16 +470,7 @@ Delegation items can also refer to other delegation items. If a cycle is encount
 Delegation paths are resolved in value namespace, and if the path doesn't refer to a function or associated function, an error is reported.
 Delegation for associated types and constants in particular is not currently supported ([fut](#support-delegating-types-and-consts)).
 
-Type-relative paths are also supported, although the nightly implementation may be limited.
-
-> [!NOTE]
->
-> Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows:
-> - a path to a free function (e.g., `module::func`).
-> - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
-> - a type-relative path (e.g., `<T>::default`);
->
-> Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a _compatible_ signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
+Type-relative paths are also supported, although the nightly implementation may be limited ([impl](#supporting-type-relative-paths)).
 
 _See the following sections for future possibilities_:
 
@@ -549,6 +538,8 @@ The following procedure is used for remapping:
       5. When no argument is specified it is treated as `_`/`'_` was written.
 2. If any non-own parameters in the signature or where-clauses remain unsubstituted, report an error ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
 3. Copied parameters are renamed to avoid colliding with generic parameters already in scope. Even if compiler can treat parameters with colliding names as distinct parameters without breaking anything, it is still be better to do renaming for more understandable error messages.
+
+TODO: Why do we need to substitute all parent generics in type-relative paths?
 
 _See the following sections for future possibilities_:
 
@@ -1291,6 +1282,26 @@ where
 </details>
 
 ↩ [Generics remapping](#generics-remapping)
+
+#### Supporting type-relative paths
+
+Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows:
+  - a path to a free function (e.g., `module::func`).
+  - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
+  - a type-relative path (e.g., `<T>::default`);
+
+Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a _compatible_ signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
+
+TODO: different approaches for working around this limitation:
+- generate body during MIR
+- generate temporary body -> typecheck -> use the result of typeck
+- experimentations with "sandox"
+
+TODO: Mention something about query cycles
+
+TODO: What exactly are limitations of the current nightly support?
+
+↩ [Paths and name resolution](#paths-and-name-resolution)
 
 ### Alternatives to this RFC
 
