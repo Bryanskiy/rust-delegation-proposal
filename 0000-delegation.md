@@ -172,7 +172,7 @@ You can see that the syntax of `reuse` items is generally modeled after `use` it
 
 ### Paths and callee disambiguation
 
-One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example, or `BTreeMap::<T, ()>::name` instead of `name` in the others. The reason is that the callee does not have to be a method of the wrapped type. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
+One might ask why we need to specify the path `Hash::hash` instead of simply writing `hash` in the first example, or `BTreeMap::<T, ()>::name` instead of `name` in the others. The reason is that the callee does not have to be a method of the wrapped type, so the name alone would not tell which function is meant. For example, the `IntoIterator` implementation of `BTreeSet` simply calls the `iter` inherent method of `BTreeSet` itself:
 
 ```rust
 impl<'a, T> IntoIterator for &'a BTreeSet<T> {
@@ -196,7 +196,18 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 }
 ```
 
-Therefore paths help to unambiguously identify the function to which we are forwarding.
+The `as into_iter` part gives the generated function the name the trait requires. The target expression `{ self }` just passes the receiver through unchanged. In such cases, the target expression might be omitted altogether using the `;` syntax:
+
+```rust
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    reuse BTreeSet::<T>::iter as into_iter;
+}
+```
+
+So, paths help to unambiguously identify the function to which we are forwarding.
 
 TODO: So you can delegate from X to X
 
