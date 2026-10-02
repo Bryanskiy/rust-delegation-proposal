@@ -196,22 +196,11 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 }
 ```
 
-The `as into_iter` part gives the generated function the name the trait requires. The target expression `{ self }` just passes the receiver through unchanged.
+Here, the `as into_iter` part gives the generated function the name the trait requires.
 
-TODO(move): In such cases, the target expression might be omitted altogether using the `;` syntax:
+So, paths help to unambiguously identify the function to which we are forwarding. It also worth mentioning that when delegating to type-relative paths, as with `BTreeSet::<T>::iter` above, it is currently necessary to specify the type's generic arguments. But the limitation could be fixed in the future.
 
-```rust
-impl<'a, T> IntoIterator for &'a BTreeSet<T> {
-    type Item = &'a T;
-    type IntoIter = Iter<'a, T>;
-
-    reuse BTreeSet::<T>::iter as into_iter;
-}
-```
-
-So, paths help to unambiguously identify the function to which we are forwarding.
-
-TODO: So you can delegate from X to X
+Note also that the parent context and the callee are independent of each other. Together with [Other parent contexts](#other-parent-contexts). In other words, you can delegate from any kind of function to any kind of function. For example, a free function can delegate to an inherent method.
 
 ### Methods without receiver
 
@@ -233,15 +222,28 @@ impl<T> Default for BTreeSet<T> {
 }
 ```
 
-TODO: motivate `;` as sugar
+TODO: explain
+
+### Omitting block expression
+
+In [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) and [_Methods without receiver_](#methods-without-receiver) sections we saw that the target expression `{ self }` simply passes the receiver through unchanged. In such cases it can be left out entirely, and the item ends with a semicolon instead:
+
+```rust
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    reuse BTreeSet::<T>::iter as into_iter;
+}
+```
+
+and
 
 ```rust
 impl<T> Default for BTreeSet<T> {
     reuse BTreeSet::<T>::new as default;
 }
 ```
-
-TODO
 
 ### Delegating binary operators
 
