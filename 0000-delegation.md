@@ -196,7 +196,9 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 }
 ```
 
-The `as into_iter` part gives the generated function the name the trait requires. The target expression `{ self }` just passes the receiver through unchanged. In such cases, the target expression might be omitted altogether using the `;` syntax:
+The `as into_iter` part gives the generated function the name the trait requires. The target expression `{ self }` just passes the receiver through unchanged.
+
+TODO(move): In such cases, the target expression might be omitted altogether using the `;` syntax:
 
 ```rust
 impl<'a, T> IntoIterator for &'a BTreeSet<T> {
