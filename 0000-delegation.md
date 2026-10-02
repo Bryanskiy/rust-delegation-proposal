@@ -202,7 +202,7 @@ You can see that the syntax of `reuse` items is generally modeled after `use` it
 
 ### Methods without receiver
 
-Not every forwarded method has a receiver. `Default::default` has no arguments at all. For example, the `Default` implementation of `BTreeSet` just calls the inherent function `new`:
+So far, the target expression has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. But not every forwarded method has a receiver. `Default::default` has no arguments at all: the `Default` implementation of `BTreeSet` just calls the inherent function `new`:
 
 ```rust
 impl<T> Default for BTreeSet<T> {
@@ -249,7 +249,7 @@ This is purely syntactic sugar: `reuse path;` stands for `reuse path { self }`.
 
 ### Delegating binary operators
 
-So far, the target expression has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. Binary operators are different because both operands have the same “receiver” type. Here is the forwarding implementation of the `PartialEq` trait for `BTreeSet`:
+Binary operators are also different in that both operands have the same “receiver” type. Here is the forwarding implementation of the `PartialEq` trait for `BTreeSet`:
 
 ```rust
 impl<T: PartialEq> PartialEq for BTreeSet<T> {
@@ -285,9 +285,7 @@ impl<T: Clone> Clone for BTreeSet<T> {
 }
 ```
 
-TODO: explanation
-
-Both methods can be delegated with the list syntax from above:
+So, both methods can be delegated with the list syntax from above:
 
 ```rust
 impl<T: Clone> Clone for BTreeSet<T> {
