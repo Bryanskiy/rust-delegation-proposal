@@ -949,8 +949,20 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
 
 The syntax cost of supporting it is negligible compared with the benefit. Specifically:
 
-1. It is not a new concept in Rust, as `use` declarations already support renaming.
-2. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+1. This will allow delegation from a trait implementation to a function that is not a method of the trait and has a different name from those defined in the trait.
+    <details>
+
+    <summary> Example: renaming in a trait implementation.</summary>
+
+   ```rust
+    impl<T> Default for BTreeSet<T> {
+        reuse BTreeSet::<T>::new as default;
+    }
+   ```
+
+   </details>
+2. It is not a new concept in Rust, as `use` declarations already support renaming.
+3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
    1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
    2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
    3. `export A as B` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
