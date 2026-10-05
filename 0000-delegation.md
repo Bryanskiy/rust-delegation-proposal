@@ -11,6 +11,8 @@ This RFC proposes a design for _delegation_: syntactic sugar for ergonomically f
 
 ## Motivation
 
+### Forwarding to a subobject
+
 Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition methods that would be inherited automatically in other languages must instead be implemented manually, often with the help of macros. Consider a common pattern [found](https://github.com/rust-lang/rust/blob/ad2e756c7093149e25f67a747e579a49b7e6976e/library/core/src/iter/adapters/flatten.rs#L55-L104) throughout real Rust codebases:
 
 ```rust
@@ -45,7 +47,20 @@ The `Iterator` implementation simply forwards multiple method calls to a field t
 
 This situation highlights a gap in Rust’s ergonomics: while Rust provides powerful mechanisms for defining abstractions through traits and generics it offers comparatively little support for reusing existing behavior.
 
-TODO: emphasis on newtypes
+This RFC aims to address this limitation by introducing a delegation feature. With delegation, the forwarding implementation above could be rewritten as follows:
+
+```rust
+impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
+where
+    F: FnMut(I::Item) -> U,
+{
+    reuse Iterator::* { self.inner }
+}
+```
+
+Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive that work.
+
+### Generalisation
 
 While forwarding to subobject methods remains the main motivating scenario, if we have a general enough mechanism for function call forwarding, we will be able to support other scenarios as well.
 - Inherent method on a type forwarding to a method from trait implementation on the same type.
@@ -53,7 +68,7 @@ While forwarding to subobject methods remains the main motivating scenario, if w
   - E.g. target feature attributes. TODO: and example from stdarch
 - Any other scenario having the general shape of a function calling another function with limited argument transformation.
 
-This RFC aims to address these issues by introducing the delegation feature, providing such generic forwarding mechanism. Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive that work.
+This part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions and in both cases the forward-compatibility concerns were never addressed. Therefore in this proposal we want to explore the design space more thoroughly.
 
 ## How to read this RFC
 
@@ -606,7 +621,7 @@ The motivation here is to avoid more complex features such as argument or return
 
 If a pattern fits within the proposal's syntax budget and can be expressed by a single, uniform desugaring rule, support it, even when it is expected to be rare in practice, rather than limiting support to what appears to be the common case.
 
-Part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions and in both cases the forward-compatibility concerns were never addressed. Therefore in this proposal we want to explore the design space more thoroughly.
+This approach allows us to explore the design space more thoroughly, as discussed in the [_Motivation_](#generalisation) section.
 
 This is a default, not an absolute, it may be violated when there is a sufficiently strong reason to do so.
 
