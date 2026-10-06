@@ -571,7 +571,7 @@ However, after the copying we need to remap the generics so that the copied sign
 The delegation resolution's signature may contain:
 - Own generic parameters - generic parameters defined directly by the delegation resolution item.
 - Parent generic parameters, including `Self` - generic parameters defined by the delegation resolution's parent trait or impl.
-  - After the copying all the parent parameters start as *unsubstituted*.
+  - After the copying all the parent parameters start as *unsubstituted*. Replacing the parameter's uses with some provided arguments makes it substituted.
 
 The following procedure is used for remapping each of the own parameters:
 - Generic argument corresponding to the parameter is identified in the last segment of the elaborated callee path.
@@ -580,7 +580,7 @@ The following procedure is used for remapping each of the own parameters:
 - If the generic argument is not an infer, then the generic parameter's definition is eliminated from the generated function and all its uses are replaced with that argument ([?](#why-might-child-parameters-need-to-be-substituted)).
 
 The following procedure is used for remapping the `Self` parent parameter:
-- If the parent context is an impl, then all the parameter's uses are replaced with the impl's self type.
+- If the parent context is an impl or a trait, then all the parameter's uses are replaced with the impl's or trait's self type.
   - The `Self` argument in the callee path is ignored, even if it is specified ([?](#why-is-self-type-not-substituted)).
 - Otherwise, generic argument corresponding to the `Self` parameter is identified in the elaborated qualified callee path.
 - If the generic argument is infer, then uses of `Self` stay in place and remain unsubstituted.
@@ -590,7 +590,8 @@ The following procedure is used for remapping the `Self` parent parameter:
 The following procedure is used for remapping each of the non-`Self` parent parameters:
 - If the parent context is a trait impl (`impl Trait<Args> for ...`), then all the parameter's uses are replaced with the corresponding argument in `Args`.
   - The possible matching arguments in the callee path are ignored.
-  - This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
+    - This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
+- Otherwise, if the callee's parent is an inherent impl, the parameter remain unsubstituted.
 - Otherwise, if the callee's parent is a trait, generic argument corresponding to the parameter is identified in the trait segment of the elaborated callee path.
 - If the generic argument is infer, then uses of the parameter stay in place and remain unsubstituted.
   - Nested infers are not allowed.
