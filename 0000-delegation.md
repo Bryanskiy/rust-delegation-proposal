@@ -106,7 +106,7 @@ Most of the examples in this proposal can be tried on nightly Rust.
 The nightly implementation is [feature-complete](https://en.wikipedia.org/wiki/Software_release_life_cycle#Feature-complete), and may even accept more code than this RFC describes, since its primary purpose was experimentation.
 Different parts of the implementation may have different levels of design maturity and polishing, and if stabilization of the feature happens it will definitely happen in multiple stages.
 
-Some delegation sub-features like delegation to inherent methods may work in a limited way, since supporting them properly would require compiler reengineering to avoid query cycles ([impl](#supporting-type-relative-paths)). Some of these limitations are discussed throughout the proposal.
+Some delegation sub-features like delegation to inherent methods may work in a limited way, since supporting them properly would require compiler reengineering to avoid query cycles. Some of these limitations are discussed throughout the proposal.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -500,11 +500,43 @@ Delegation items can also refer to other delegation items. If a cycle is encount
 Delegation paths are resolved in value namespace, and if the path doesn't refer to a function or associated function, an error is reported.
 Delegation for associated types and constants in particular is not currently supported ([fut](#support-delegating-types-and-consts)).
 
-Type-relative paths are also supported, although the nightly implementation may be limited ([impl](#supporting-type-relative-paths)).
+Type-relative paths are also supported, although support for them is currently limited.
+
+> [!NOTE]
+>
+>  Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows:
+> - a path to a free function (e.g., `module::func`).
+> - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
+> - a type-relative path (e.g., `<T>::default`);
+>
+> Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
+>
+> Currently, to work around this limitation, we use simple name-based resolution during [AST lowering](https://rustc-dev-guide.rust-lang.org/hir/lowering.html): we only resolve to an inherent method with the specified name. This does not work in more complex cases, such as when a type-relative path resolves to a trait method:
+>
+>  ```rust
+> pub struct Struct {}
+>
+> trait Trait {
+>     fn to_string(x: &Struct) -> String {
+>         // default impl
+>     }
+> }
+>
+> impl Trait for Struct {}
+>
+> impl Struct {
+>     pub fn get_string(x: &Struct) -> String {
+>         Struct::to_string(f)
+>     }
+> }
+> ```
+>
+> `Struct::to_string` resolves to `Trait::to_string`. However, since we cannot perform trait selection during lowering, we report an error. This limitation could potentially be addressed in the future [fut](#supporting-type-relative-paths).
 
 _See the following sections for future possibilities_:
 
 - [Name-based resolution as sugar](#name-based-resolution-as-sugar)
+- [Supporting type-relative paths](#supporting-type-relative-paths)
 
 TODO: all of this vvv is not about name resolution
 
@@ -1325,26 +1357,6 @@ where
 
 ↩ [Generics remapping](#generics-remapping)
 
-#### Supporting type-relative paths
-
-Delegation to inherent methods is particularly complex to implement. From the name resolution perspective paths in Rust may be classified as follows:
-  - a path to a free function (e.g., `module::func`).
-  - a  reference to an associated item defined from a trait (e.g., `<Vec<T> as Clone>::clone`), where the `Self` type may also be omitted.
-  - a type-relative path (e.g., `<T>::default`);
-
-Lowering a delegation item into a real function requires knowing the callee's signature including: generics, number of arguments, whether and how it takes `self` argument. With this information a _compatible_ signature can be synthesized for the new item. Paths in the first two categories can be resolved early enough to expose that information. Type-relative paths generally cannot: their resolution is not known until type-checking, by which point the delegation item's signature is already needed.
-
-TODO: different approaches for working around this limitation:
-- generate body during MIR
-- generate temporary body -> typecheck -> use the result of typeck
-- experimentations with "sandox"
-
-TODO: Mention something about query cycles
-
-TODO: What exactly are limitations of the current nightly support?
-
-↩ [Paths and name resolution](#paths-and-name-resolution)
-
 ### Alternatives to this RFC
 
 TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/text/3735-field-projections.md
@@ -1705,3 +1717,15 @@ Not resolving the prefix and accepting `reuse nonexistent::path::{};` would be w
 Resolving the prefix, but not checking it for stability would be a compatibility hazard (if an unstable API is removed).
 
 ↩ [List delegation](#list-delegation)
+
+#### Supporting type-relative paths
+
+There are different approaches that can be considered to support type-relative paths:
+1. We can generate incomplete body(e.g. without arguments), then use analysis passes in HIR to infer the missing information and complete the body generation during lowering to MIR/THIR.
+2. We could lower everything except delegation items, run the analysis passes, and then finish lowering the delegation items.
+
+TODO: Mention something about query cycles
+
+This would require substantial compiler refactoring, so we do not have a strong opinion on this.
+
+↩ [Paths and name resolution](#paths-and-name-resolution)
