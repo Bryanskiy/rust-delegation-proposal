@@ -1718,7 +1718,7 @@ Resolving the prefix, but not checking it for stability would be a compatibility
 
 ↩ [List delegation](#list-delegation)
 
-#### Supporting type-relative paths
+### Supporting type-relative paths
 
 There are different approaches that can be considered to support type-relative paths:
 1. We can generate incomplete body(e.g. without arguments), then use analysis passes in HIR to infer the missing information and complete the body generation during lowering to MIR/THIR.
