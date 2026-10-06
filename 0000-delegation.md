@@ -673,9 +673,50 @@ However, if we wrote `Trait::<u8>::method` instead of just `Trait::method`, then
 
 Also see [_Future possibilities: More sophisticated inference of generic parameters_](#more-sophisticated-inference-of-generic-parameters)
 
-#### `Self` identification and remapping
+#### Effective Self type identification
 
-TODO
+To increase usefulness of delegation and provide better support for newtypes we need to identify types that are "actually `Self`" in method signatures, not just for the `self` parameter, but for other parameters and for the return type too.
+
+For example, in this example `Struct`s in `other: Struct` and in `-> Struct` in the impl are "actually `Self`".
+```rust
+trait Trait {
+    fn method(self, other: Self) -> Self;
+}
+
+impl Trait for Struct {
+    fn method(self, other: Struct) -> Struct {}
+}
+```
+Let's call such types in signatures "effective self types".
+
+Function parameters that have a type containing an effective self type are converted using the delegation's target expression if some additional conditions are met.
+Return type that contains an effective self type is converted using newtype wrapping if other additional conditions are met.
+See the body desugaring chapter for details.
+
+The following procedure is used for detecting effective self types.
+
+If the delegation resolution is a trait method, then the `Self` parameter occurences in that trait method (before substitution) are considered effective self types in the generated function.
+In situations like
+```rust
+trait BinOp<Rhs = Self> {
+    fn bin_op(&self, rhs: &Rhs);
+}
+```
+we need to treat `Rhs` as a self type as well, if it was obtained from the `Self` parameter default, otherwise newtype conversions won't work correctly when delegating standard binary operators.
+
+If the delegation resolution is an inherent method with `self`, then its corresponding type is considered an effective self type in the generated function.
+
+In all other cases types in signatures are not considered effective self types, in particular effective self types are *not* detected by tracking the use of `Self` type alias in impls (as opposed to `Self` parameter in traits), or by doing type equality checks.
+```rust
+impl Struct {
+    fn method(self, other1: Self, other2: Struct) { ... }
+}
+
+// Types of `other1` and `other2` are not considered effective self types here.
+reuse Struct::method;
+```
+
+TODO: future possibilities - opt in to mark as effself, or type equality checks + opt out of effself
 
 ### Desugaring of individual delegation: body
 
