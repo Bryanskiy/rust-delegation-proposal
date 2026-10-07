@@ -1711,7 +1711,7 @@ _Weaknesses_:
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-The questions below are not expected to block acceptance of this RFC. Each is either a minor detail that can be settled during implementation or before stabilization.
+The questions below are not expected to block acceptance of this RFC. They can be settled during implementation or before stabilization.
 
 ### Which attributes should be added by default?
 
