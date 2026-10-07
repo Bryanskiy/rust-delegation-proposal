@@ -842,7 +842,7 @@ etc.
 
 All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
-Generality is particularly relevant in light of the existing prior art. The two previous delegation RFCs, [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), deliberately limited delegation to trait methods. Other proposals like [rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) and [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) address other use cases through different language mechanisms.
+Generality is particularly relevant in light of the existing prior art. The two previous delegation RFCs, [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), deliberately limited delegation to trait methods. Other proposals like [rust-lang/rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) and [rust-lang/rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) address other use cases through different language mechanisms.
 
 
 For the callee resolution to any variant is permitted as established in the name resolution section. For the caller we see no reason to restrict (also see [_guiding principles_](#design-guiding-principles)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
@@ -1379,9 +1379,7 @@ Where `?K` denotes a parameter that has been copied but not remapped. There are 
 
 In this proposal, we suggest using the “report an error” option because it is the most conservative approach and requires generic arguments to be specified explicitly. Once compiler architecture is advanced enough we can implement more sophisticated inference.
 
-See the following sections for future possibilities:
-
-- [More sophisticated inference of generic parameters](#More-sophisticated-inference-of-generic-parameters)
+Also see [_Future possibilities: More sophisticated inference of generic parameters_](#More-sophisticated-inference-of-generic-parameters)
 
 ↩ [Generics remapping](#generics-remapping)
 
