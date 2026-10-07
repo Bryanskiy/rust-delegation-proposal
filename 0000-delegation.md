@@ -578,10 +578,8 @@ WhereClause
 
 An `#[inline]` attribute is implicitly added to the generated function, unless the delegation item already has some `inline` attribute.
 
-A `#[must_use]` attribute is implicitly added to the generated function if the delegation resolution has it, unless the delegation item already has some `must_use` attribute (perhaps with a different message).
+A `#[must_use]` attribute is implicitly copied to the generated function if the delegation resolution has one, unless the delegation item already has some `must_use` attribute (perhaps with a different message).
 It is not currently possible the generated function non-`must_use` if the delegation resolution is `must_use`.
-
-In the future some other attributes may also be "inherited" similarly to `must_use`.
 
 Also see [_Unresolved questions: Which attributes should be added by default?_](#which-attributes-should-be-added-by-default)
 
@@ -631,7 +629,7 @@ If any parent parameters in the signature or where-clauses remain unsubstituted,
 
 <details>
 
-<summary> Example:generics remapping with step-by-step desugaring.  </summary>
+<summary> Example: generics remapping with step-by-step desugaring.  </summary>
 
 Suppose we have an example like this, an inherent impl delegates to a trait:
 ```rust
@@ -689,7 +687,7 @@ TODO:
 
 ```rust
 #[attrs]
-pub(vis) FunctionQualifiers fn name<GenericParams>(..., argN: ArgN, ...) FunctionReturnType
+pub(vis) FunctionQualifiers fn name<GenericParams>(..., argN: ArgN, ...) -> FunctionReturnType
 WhereClause
 {
     target_expr_stmt_1;
@@ -1713,11 +1711,11 @@ _Weaknesses_:
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-The questions below are not expected to block acceptance of this RFC. Each is either a minor detail that can be settled during implementation or before stabilization.
+The questions below are not expected to block acceptance of this RFC. They can be settled during implementation or before stabilization.
 
 ### Which attributes should be added by default?
 
-Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute.
+Certain attributes may be reasonable to add or copy from the callee by default. The current implementation adds the `#[inline]` attribute and copies the `#[must_use]` attribute.
 
 There should also be a way to opt out of default attributes when they are not desired. For `#[inline]`, this may be done with `#[inline(never)]` on the delegation item, but the appropriate mechanism depends on the attribute, and some attributes may have no corresponding way to opt out.
 
@@ -1747,7 +1745,7 @@ We prefer to leave all control to the user while also adding a lint that prevent
 ## Future possibilities
 [future-possibilities]: #future-possibilities
 
-Several extensions could be added on top of the core feature without changing its fundamental semantics. At the same time, the scope for such extensions is relatively limited, and they would primarily provide syntactic conveniences rather than introduce fundamentally new functionality.
+Several extensions could be added on top of the core feature without changing its fundamental semantics. At the same time, the scope for such extensions is relatively limited.
 
 ### Name-based resolution as sugar
 
