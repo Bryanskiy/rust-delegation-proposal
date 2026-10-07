@@ -1448,7 +1448,7 @@ TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/t
 
 #### Macros
 
-See [_Prior art: delegate_](#cratesiodelegate) and [_Prior art: ambassador_](#cratesioambassador) in prior art for a closer look at the two most widely used crates for this.
+See [_Prior art: delegate_](#cratesiodelegate) and [_Prior art: ambassador_](#cratesioambassador) for a closer look at the two most widely used crates for this.
 
 Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: macros do not have access to type information such as the callee's resolved signature or the methods of a trait.
 
