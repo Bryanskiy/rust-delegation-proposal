@@ -1742,8 +1742,6 @@ Taking this into consideration, several design choices are possible:
 
 We prefer to leave all control to the user while also adding a lint that prevents a generated function from having greater visibility than the callee.
 
-↩ [Why is visibility manually added instead of being copied from the callee?](#why-is-visibility-manually-added-instead-of-being-copied-from-the-callee)
-
 ↩ [Reference-level explanation](#reference-level-explanation)
 
 ## Future possibilities
@@ -1755,7 +1753,7 @@ Several extensions could be added on top of the core feature without changing it
 
 A shorter syntax that infers the callee from a bare method name could be layered on top of fully qualified paths.
 
-↩ [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation-part-1-high-level-view)
+↩ [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
 
 ### More sophisticated inference of generic parameters
 
