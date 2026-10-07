@@ -426,7 +426,7 @@ reuse prefix::b {
 }
 ```
 
-Empty list delegations are currently prohibited ([fut](#empty-list-delegation)).
+Empty list delegations are currently prohibited (See [_Future possibilities: Empty list delegation_](#empty-list-delegation)).
 
 #### Glob delegation
 
@@ -847,7 +847,7 @@ Generality is particularly relevant in light of the existing prior art. The two 
 
 For the callee resolution to any variant is permitted as established in the name resolution section. For the caller we see no reason to restrict (also see [_guiding principles_](#design-guiding-principles)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 #### why are qualified paths used for call disambiguation?
 
@@ -946,7 +946,7 @@ impl<T> Trait<T> for Outer { reuse Trait::<()>::foo { self.0 } } // OK
 
 Also see [_Future possibilities: Name-based resolution as sugar_](#name-based-resolution-as-sugar)
 
-↩ [Paths and name resolution](#paths-and-name-resolution)
+↩ [_Paths and name resolution_](#paths-and-name-resolution)
 
 #### Why glob restrictions?
 
@@ -961,7 +961,7 @@ Similarly, the motivation for glob delegating from modules is not very strong, a
 
 List delegations list all their names explicitly, so they don't need any similar restrictions.
 
-↩ [Glob delegation](#glob-delegation)
+↩ [_Glob delegation_](#glob-delegation)
 
 #### Why is the delegation resolution the trait being implemented in trait implementations?
 
@@ -1001,7 +1001,7 @@ If delegation item is in a trait implementation (e.g. `impl Trait for Type { /*d
 
 The `#[refine]` attribute proposed by RFC 3245 could potentially be used for changing the behavior from one to another. We suggest inheriting signatures from the trait by default.
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-signature)
+↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
 
 #### Why is visibility manually added instead of being copied from the callee?
 
@@ -1009,7 +1009,7 @@ Delegation item is a distinct item that may deliberately want different behavior
 
 Also see [_Unresolved questions: Should the visibility of the delegation item be restricted?_](#should-the-visibility-of-the-delegation-item-be-restricted)
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 #### Why doesn't a delegation item provide syntax for introducing its own generics?
 
@@ -1023,7 +1023,7 @@ pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
 
 In principle, we could support this delegation pattern with syntax such as `reuse<T: ConvertVec, A: Allocator> T::to_vec;`. However, this would exceed our syntax budget(See [_guiding principles_](#design-guiding-principles)).
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 #### Why doesn't a delegation item provide syntax for arguments or return value transformations?
 
@@ -1033,7 +1033,7 @@ There are several transformations one might reasonably want from the delegation 
 
 To support these transformations in their most general form, delegation items would need something closer to pre-processing and post-processing closures. We do not support these in the RFC, in accordance with our [_guiding principles_](#design-guiding-principles).
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 #### Why are attributes manually added instead of being copied from the callee?
 
@@ -1041,7 +1041,7 @@ Attributes may affect diagnostics, linking, documentation, or the item's public 
 
 Also see [_Unresolved questions: Which attributes should be added by default?_](#which-attributes-should-be-added-by-default)
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 #### Why `reuse`?
 
@@ -1062,7 +1062,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    3. `export path . { sel_1, ..., sel_n }` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 #### Why is glob delegation supported?
 
@@ -1077,7 +1077,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    4. `#[delegate(Trait)]` delegates every method of `Trait` in [crates.io/ambassador](https://crates.io/crates/ambassador).
    5. `export name.*` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 #### Why is renaming supported?
 
@@ -1101,7 +1101,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    2. in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
    3. `export A as B` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 #### Why are function qualifiers copied unchanged?
 
@@ -1120,7 +1120,7 @@ The function header comprises qualifiers such as `const`, `async`, `unsafe`, `ex
 
 The proposal chooses to inherit all function qualifiers from the callee unchanged. The main problem with first approach is verbosity. Matching the callee's qualifiers is essentially the only sensible choice, yet that approach would force users to repeat qualifiers for delegation items.
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-signature)
+↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
 
 #### Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?
 
@@ -1143,7 +1143,7 @@ Two possible options to generate call are as follows:
 
 The first option should be chosen because otherwise the generated call may fail with a type inference error.
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-body)
+↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
 
 #### Why are statements not passed to the call?
 
@@ -1166,31 +1166,31 @@ Two possible options to generate call are as follows:
 
 TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600)
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-body)
+↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
 
 #### Why is the target expression a block expression?
 
 Unlike [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [_guiding principles_](#design-guiding-principles).
 
-↩ [Target expression](#target-expression)
+↩ [_Target expression_](#target-expression)
 
 #### Why can the block expression be omitted?
 
 The `;` form is effectively an alias for `{ self }`, providing a more ergonomic way to delegate free functions and methods without a receiver.
 
-↩ [Target expression](#target-expression)
+↩ [_Target expression_](#target-expression)
 
 #### Why target expression is not restricted?
 
 In the feedback to the [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) it was suggested that delegation be limited to fields. This suggestion was adopted in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
 
-↩ [Target expression](#target-expression)
+↩ [_Target expression_](#target-expression)
 
 #### Why is delegation of variadic functions not supported?
 
 TODO: find github issue
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-signature)
+↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
 
 #### Why is `Self` type not substituted?
 
@@ -1233,7 +1233,7 @@ Here, `F` can be copied directly because it is an own parameter of `Iterator::an
 
 Thus, `?Self` would need to be substituted with different types depending on its position in the signature or where-clauses.
 
-↩ [Generics remapping](#generics-remapping)
+↩ [_Generics remapping_](#generics-remapping)
 
 #### Why might parent parameters need to be substituted?
 
@@ -1275,7 +1275,7 @@ To make the example work the parameter can be explicitly substituted through the
 reuse BTreeMap::<T, A>::contains_key as contains { self.map }
 ```
 
-↩ [Generics remapping](#generics-remapping)
+↩ [_Generics remapping_](#generics-remapping)
 
 #### Why might child parameters need to be substituted?
 
@@ -1291,7 +1291,7 @@ pub const fn largest_max_leb128_len() -> usize {
 
 With the ability to provide generic args to own parameters `largest_max_leb128_len` implementation might be replaced with `reuse max_leb128_len::<u128>` delegation item.
 
-↩ [Generics remapping](#generics-remapping)
+↩ [_Generics remapping_](#generics-remapping)
 
 #### Why inference variables are allowed in paths?
 
@@ -1309,7 +1309,7 @@ With the ability to provide generic args to own parameters `largest_max_leb128_l
 
 2. If a parameter isn't present in the signature or where-clauses there is nothing to substitute and we can omit writing the whole name.
 
-↩ [Generics remapping](#generics-remapping)
+↩ [_Generics remapping_](#generics-remapping)
 
 #### Why nested inference variables are not allowed in paths?
 
@@ -1330,7 +1330,7 @@ fn bar<A, B>(x: HashMap<A, B>) {
 }
 ```
 
-↩ [Generics remapping](#generics-remapping)
+↩ [_Generics remapping_](#generics-remapping)
 
 
 #### What happens if undefined generic parameters remain after substitution?
@@ -1381,7 +1381,7 @@ In this proposal, we suggest using the “report an error” option because it i
 
 Also see [_Future possibilities: More sophisticated inference of generic parameters_](#More-sophisticated-inference-of-generic-parameters)
 
-↩ [Generics remapping](#generics-remapping)
+↩ [_Generics remapping_](#generics-remapping)
 
 #### What happens if undefined generic parameters remain after substitution? Part 2.
 
@@ -1440,7 +1440,7 @@ where
 
 </details>
 
-↩ [Generics remapping](#generics-remapping)
+↩ [_Generics remapping_](#generics-remapping)
 
 ### Alternatives to this RFC
 
@@ -1721,7 +1721,7 @@ Certain attributes may be reasonable to add or inherit from the callee by defaul
 
 There should also be a way to opt out of default attributes when they are not desired. For `#[inline]`, this may be done with `#[inline(never)]` on the delegation item, but the appropriate mechanism depends on the attribute, and some attributes may have no corresponding way to opt out.
 
-↩ [Why are attributes manually added instead of being copied from the callee?](#why-are-attributes-manually-added-instead-of-being-copied-from-the-callee)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 ### Should the visibility of the delegation item be restricted?
 
@@ -1742,7 +1742,7 @@ Taking this into consideration, several design choices are possible:
 
 We prefer to leave all control to the user while also adding a lint that prevents a generated function from having greater visibility than the callee.
 
-↩ [Reference-level explanation](#reference-level-explanation)
+↩ [_Reference-level explanation_](#reference-level-explanation)
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
@@ -1753,13 +1753,13 @@ Several extensions could be added on top of the core feature without changing it
 
 A shorter syntax that infers the callee from a bare method name could be layered on top of fully qualified paths.
 
-↩ [Why are qualified paths used for call disambiguation](#why-are-qualified-paths-used-for-call-disambiguation)
+↩ [_Paths and name resolution_](#paths-and-name-resolution)
 
 ### More sophisticated inference of generic parameters
 
 We could implement a more advanced mechanism for inferring unsubstituted generic parameters, allowing users to specify fewer generic arguments explicitly.
 
-↩ [What happens if undefined generic parameters remain after substitution?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)
+↩ [_Generics remapping_](#generics-remapping)
 
 ### Support delegating types and consts
 
@@ -1788,7 +1788,7 @@ However, there are 2 complexities:
 
 Based on these notes we would like to postpone delegation of types and constants.
 
-↩ [Reference-level explanation](#paths-and-name-resolution)
+↩ [_Reference-level explanation_](#paths-and-name-resolution)
 
 ### Empty list delegation
 
@@ -1799,7 +1799,7 @@ So the implementation has some cost for little benefit, not much sense implement
 Not resolving the prefix and accepting `reuse nonexistent::path::{};` would be weird.
 Resolving the prefix, but not checking it for stability would be a compatibility hazard (if an unstable API is removed).
 
-↩ [List delegation](#list-delegation)
+↩ [_List delegation_](#list-delegation)
 
 ### Supporting type-relative paths
 
@@ -1811,4 +1811,4 @@ TODO: Mention something about query cycles
 
 This would require substantial compiler refactoring, so we do not have a strong opinion on this.
 
-↩ [Paths and name resolution](#paths-and-name-resolution)
+↩ [_Paths and name resolution_](#paths-and-name-resolution)
