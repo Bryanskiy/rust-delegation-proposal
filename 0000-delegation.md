@@ -689,10 +689,6 @@ impl Trait for Struct {
 ```
 Let's call such types in signatures "effective self types".
 
-Function parameters that have a type containing an effective self type are converted using the delegation's target expression if some additional conditions are met.
-Return type that contains an effective self type is converted using newtype wrapping if other additional conditions are met.
-See the body desugaring chapter for details.
-
 The following procedure is used for detecting effective self types.
 
 If the delegation resolution is a trait method, then the `Self` parameter occurences in that trait method (before substitution) are considered effective self types in the generated function.
@@ -718,7 +714,26 @@ reuse Struct::method;
 
 TODO: future possibilities - opt in to mark as effself, or type equality checks + opt out of effself
 
+If a function parameter's type is an effective self type, possibly wrapped into one of references or smart pointers mentioned in [items.associated.fn.method.self-ty](https://doc.rust-lang.org/reference/items/associated-items.html#r-items.associated.fn.method.self-ty), then let's call it an "effective self parameter".
+If the function's return type is an effective self type, without any additional wrapping, the let's call it "self return type".
+
+In the generated function body effective self parameters are converted using the delegation's target expression, and self return types are converted using newtype wrapping.
+See the body desugaring chapter for details.
+
+TODO: future possibilities - extend the set of effective self type uses to which the conversions apply.
+
 ### Desugaring of individual delegation: body
+
+Target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that is used to transforms the delegation item's effective self parameters before they are forwarded to the resolved callee. There are no restrictions on the expressions that can be used inside the target expression ([?](#why-target-expression-is-not-restricted)).
+
+Inside that block, `self` refers to an effective self parameter that will be transformed.
+
+If the target expression is omitted, then no parameter transformations happen, and delegating to functions with 0 parameters also always works ([?](#why-can-the-block-expression-be-omitted)).
+
+The target expression contains a number of statements (possibly 0) and the optional trailing expression.
+If the trailing expression is omitted, then `self` is implicitly used as the trailing expression.
+
+If the generated function has N effective self parameters, then the target expression is "disassembled" and then inserted N times.
 
 TODO:
 - The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
@@ -739,14 +754,6 @@ WhereClause
 ```
 
 TODO: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
-
-### Target expression
-
-The target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that transforms the delegation item's first argument before that argument is forwarded to the resolved callee. When no block is given the first argument is passed through unchanged ([?](#why-can-the-block-expression-be-omitted)). There are no restrictions on the expressions that can be used inside the target expression ([?](#why-target-expression-is-not-restricted)).
-
-
-Inside that block, `self` refers to TODO <br>
-TODO: `self` only in the final expression? Prohibited in statements.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -1211,19 +1218,19 @@ TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-21971
 
 Unlike [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [_guiding principles_](#design-guiding-principles).
 
-↩ [_Target expression_](#target-expression)
+↩ [_Target expression_](#desugaring-of-individual-delegation-body)
 
 #### Why can the block expression be omitted?
 
 It provides a more ergonomic way to delegate free functions and methods without a receiver.
 
-↩ [_Target expression_](#target-expression)
+↩ [_Target expression_](#desugaring-of-individual-delegation-body)
 
 #### Why target expression is not restricted?
 
 In the feedback to the [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) it was suggested that delegation be limited to fields. This suggestion was adopted in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
 
-↩ [_Target expression_](#target-expression)
+↩ [_Target expression_](#desugaring-of-individual-delegation-body)
 
 #### Why is delegation of variadic functions not supported?
 
