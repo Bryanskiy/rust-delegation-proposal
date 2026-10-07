@@ -445,6 +445,10 @@ This way manual implementations for such functions with default bodies are corre
 
 Similarly to list delegations, target expressions, generic arguments and other components are copied at token stream level, making glob delegation a macro feature.
 
+<details>
+
+<summary> Example: desugaring of glob delegation.</summary>
+
 ```rust
 trait Trait<Args> {
     fn a() {} // has default body
@@ -464,6 +468,8 @@ impl Trait<Args> for Type {
     reuse prefix::<Args>::b { target };
 }
 ```
+
+</details>
 
 Empty glob delegations are currently prohibited ([fut](#empty-list-delegation)).
 
@@ -524,7 +530,7 @@ WhereClause
 }
 ```
 
-- Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site, if any, plus [default attributes](#default-attributes).
+- Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site, if any, plus [_default attributes_](#default-attributes).
 - Visibility (`pub(vis)`) is exactly as specified by the user at the delegation site.
 - Function qualifiers(`FunctionQualifiers` - safety, constness, async-ness, ABI) are copied unchanged from the delegation resolution.
   - None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-copied-unchanged)).
@@ -599,7 +605,49 @@ The following procedure is used for remapping each of the non-`Self` parent para
 
 If any parent parameters in the signature or where-clauses remain unsubstituted, an error is reported ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
 
-An example of generics remapping with step-by-step desugaring can be found in the [appendix](#generics-remapping-example).
+<details>
+
+<summary> Example:generics remapping with step-by-step desugaring.  </summary>
+
+Suppose we have an example like this, an inherent impl delegates to a trait:
+```rust
+trait Trait<T> {
+    fn method<U>(&self, arg1: &T, arg2: &U);
+}
+
+impl Wrapper {
+    reuse Trait::method { self.inner }
+}
+
+```
+
+Then step 0 right after desugaring, but before remapping will look like this.
+Copied but not yet substituted parameters (`T`) are written as `?T`.
+
+```rust
+impl Wrapper {
+    fn method<?U>(self: &?Self, arg1: &?T, arg2: &?U) {
+        Trait::<_>::method::<_>(&self.inner, arg1, arg2)
+    }
+}
+```
+
+`?U` is an own parameter, it is copied together with its scope (`method<?U>`) as part of the function itself, so it can always be substituted with its new definition if necessary.
+`?T` and `?Self` were defined in parent scope so immediately after the copy the are unsubstituted.
+
+After the remapping this will turn into
+```rust
+impl Wrapper {
+    fn method<U>(self: &S, arg1: &?T, arg2: &U) {
+        Trait::<_>::method::<_>(&self.inner, arg1, arg2)
+    }
+}
+```
+
+So `?T` remains unsubstituted and this will produce an error.
+However, if we wrote `Trait::<u8>::method` instead of just `Trait::method`, then `?T` would be substituted with `u8` and the code would be legal.
+
+</details>
 
 _See the following sections for future possibilities_:
 
@@ -1128,48 +1176,6 @@ In the feedback to the [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) 
 TODO: find github issue
 
 ↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-signature)
-
-#### Generics remapping example
-
-Suppose we have an example like this, an inherent impl delegates to a trait:
-```rust
-trait Trait<T> {
-    fn method<U>(&self, arg1: &T, arg2: &U);
-}
-
-impl Wrapper {
-    reuse Trait::method { self.inner }
-}
-
-```
-
-Then step 0 right after desugaring, but before remapping will look like this.
-Copied but not yet substituted parameters (`T`) are written as `?T`.
-
-```rust
-impl Wrapper {
-    fn method<?U>(self: &?Self, arg1: &?T, arg2: &?U) {
-        Trait::<_>::method::<_>(&self.inner, arg1, arg2)
-    }
-}
-```
-
-`?U` is an own parameter, it is copied together with its scope (`method<?U>`) as part of the function itself, so it can always be substituted with its new definition if necessary.
-`?T` and `?Self` were defined in parent scope so immediately after the copy the are unsubstituted.
-
-After the remapping this will turn into
-```rust
-impl Wrapper {
-    fn method<U>(self: &S, arg1: &?T, arg2: &U) {
-        Trait::<_>::method::<_>(&self.inner, arg1, arg2)
-    }
-}
-```
-
-So `?T` remains unsubstituted and this will produce an error.
-However, if we wrote `Trait::<u8>::method` instead of just `Trait::method`, then `?T` would be substituted with `u8` and the code would be legal.
-
-↩ [Generics remapping](#generics-remapping)
 
 #### Why is `Self` type not substituted?
 
