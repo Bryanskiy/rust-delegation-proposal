@@ -60,7 +60,7 @@ where
 
 Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive that work.
 
-### Generalisation
+### Generalization
 
 While forwarding to subobject methods remains the main motivating scenario, if we have a general enough mechanism for function call forwarding, we will be able to support other scenarios as well.
 - Inherent method on a type forwarding to a method from trait implementation on the same type.
