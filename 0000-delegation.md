@@ -60,7 +60,7 @@ where
 
 Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive that work.
 
-### Generalisation
+### Generalization
 
 While forwarding to subobject methods remains the main motivating scenario, if we have a general enough mechanism for function call forwarding, we will be able to support other scenarios as well.
 - Inherent method on a type forwarding to a method from trait implementation on the same type.
@@ -445,6 +445,8 @@ This way manual implementations for such functions with default bodies are corre
 
 Similarly to list delegations, target expressions, generic arguments and other components are copied at token stream level, making glob delegation a macro feature.
 
+Empty glob delegations are currently prohibited (See [_Future possibilities: Empty list delegation_](#empty-list-delegation)).
+
 <details>
 
 <summary> Example: desugaring of glob delegation.</summary>
@@ -470,8 +472,6 @@ impl Trait<Args> for Type {
 ```
 
 </details>
-
-Empty glob delegations are currently prohibited (See [_Future possibilities: Empty list delegation_](#empty-list-delegation)).
 
 #### Impl delegation
 
@@ -1174,7 +1174,7 @@ Unlike [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [r
 
 #### Why can the block expression be omitted?
 
-The `;` form is effectively an alias for `{ self }`, providing a more ergonomic way to delegate free functions and methods without a receiver.
+It provides a more ergonomic way to delegate free functions and methods without a receiver.
 
 ↩ [_Target expression_](#target-expression)
 
