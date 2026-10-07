@@ -646,12 +646,12 @@ impl Wrapper {
 ```
 
 Then step 0 right after desugaring, but before remapping will look like this.
-Copied but not yet substituted parameters (`T`) are written as `?T`.
+Copied but not yet substituted parameters (`T` and `U`) are written as `?T` and `?U`.
 
 ```rust
 impl Wrapper {
-    fn method<?U>(self: &?Self, arg1: &?T, arg2: &?U) {
-        Trait::<_>::method::<_>(&self.inner, arg1, arg2)
+    fn method<?T, ?U>(self: &?Self, arg1: &?T, arg2: &?U) {
+        Trait::<?T>::method::<?U>(&self.inner, arg1, arg2)
     }
 }
 ```
@@ -662,14 +662,13 @@ impl Wrapper {
 After the remapping this will turn into
 ```rust
 impl Wrapper {
-    fn method<U>(self: &S, arg1: &?T, arg2: &U) {
-        Trait::<_>::method::<_>(&self.inner, arg1, arg2)
+    fn method<T, U>(self: &S, arg1: &T, arg2: &U) {
+        Trait::<T>::method::<U>(&self.inner, arg1, arg2)
     }
 }
 ```
 
-So `?T` remains unsubstituted and this will produce an error.
-However, if we wrote `Trait::<u8>::method` instead of just `Trait::method`, then `?T` would be substituted with `u8` and the code would be legal.
+If we wrote `Trait::<u8>::method` instead of just `Trait::method`, then `?T` would be substituted with `u8`.
 
 </details>
 
