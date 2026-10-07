@@ -58,7 +58,7 @@ where
 }
 ```
 
-Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([#1406](https://github.com/rust-lang/rfcs/pull/1406), [#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive that work.
+Delegation has long been discussed by the Rust community: it has motivated two prior RFCs ([rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)), multiple conversations and several macro crates. See [_Prior art_](#prior-art) for an overview of these efforts. This proposal seeks to revive that work.
 
 ### Generalisation
 
@@ -68,7 +68,7 @@ While forwarding to subobject methods remains the main motivating scenario, if w
   - E.g. target feature attributes. TODO: and example from stdarch
 - Any other scenario having the general shape of a function calling another function with limited argument transformation.
 
-This part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions and in both cases the forward-compatibility concerns were never addressed. Therefore in this proposal we want to explore the design space more thoroughly.
+This part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form leaving multiple possible delegation patterns as future extensions and in both cases the forward-compatibility concerns were never addressed. Therefore in this proposal we want to explore the design space more thoroughly.
 
 ## How to read this RFC
 
@@ -437,7 +437,7 @@ Glob delegations are only (semantically) allowed inside implementations, and the
 The set of names for which individual delegation items are produced is determined in the next way:
 - The full set of names defined by the target trait in all namespaces is considered.
 - Names already explicitly defined inside the glob delegation's parent context (trait impl) are filtered away. "Explicitly" here means not by another glob delegation.
-- If any of the remaining names refers to an associated type or constant, an error is reported, for future compatibility with associated type and const delegation  ([fut](#support-delegating-types-and-consts)).
+- If any of the remaining names refers to an associated type or constant, an error is reported, for future compatibility with associated type and const delegation  (See [_Future possibilities: Support delegating types and consts_](#support-delegating-types-and-consts)).
 - Note: the above rules mean that a glob delegation can only be expanded after 1) all macro invocations in its target trait are expanded, and 2) all macro invocations in its parent context impl are expanded, except perhaps other glob delegations.
 
 Note, that individual delegations are still generated for functions having default bodies in the target trait definition.
@@ -471,7 +471,7 @@ impl Trait<Args> for Type {
 
 </details>
 
-Empty glob delegations are currently prohibited ([fut](#empty-list-delegation)).
+Empty glob delegations are currently prohibited (See [_Future possibilities: Empty list delegation_](#empty-list-delegation)).
 
 #### Impl delegation
 
@@ -491,13 +491,13 @@ All the restrictions applying to regular glob delegations apply to glob delegati
 
 ### Paths and name resolution
 
-Delegation reuses the existing mechanism of paths and doesn't introduce any novel name resolution approaches ([fut](#name-based-resolution-as-sugar)).
-Paths allow delegation items to unambiguously identify callable items they forward to, including trait methods, trait implementation methods (with qualified paths used to specify `Self`), inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)).
+Delegation reuses the existing mechanism of paths and doesn't introduce any novel name resolution approaches.
+Paths allow delegation items to unambiguously identify callable items they forward to, including trait methods, trait implementation methods (with qualified paths used to specify `Self`), inherent methods, and free functions ([?](#why-are-qualified-paths-used-for-call-disambiguation)). Also see [_Future possibilities: Name-based resolution as sugar_](#name-based-resolution-as-sugar).
 
 Delegation items can also refer to other delegation items. If a cycle is encountered in such chain of recursive delegations, an error is reported.
 
 Delegation paths are resolved in value namespace, and if the path doesn't refer to a function or associated function, an error is reported.
-Delegation for associated types and constants in particular is not currently supported ([fut](#support-delegating-types-and-consts)).
+Delegation for associated types and constants in particular is not currently supported (See [_Future possibilities: Support delegating types and consts_](#support-delegating-types-and-consts)).
 
 Type-relative paths are also supported, although support for them is currently limited.
 
@@ -530,12 +530,7 @@ Type-relative paths are also supported, although support for them is currently l
 > }
 > ```
 >
-> `Struct::to_string` resolves to `Trait::to_string`. However, since we cannot perform trait selection during lowering, we report an error. This limitation could potentially be addressed in the future [fut](#supporting-type-relative-paths).
-
-_See the following sections for future possibilities_:
-
-- [Name-based resolution as sugar](#name-based-resolution-as-sugar)
-- [Supporting type-relative paths](#supporting-type-relative-paths)
+> `Struct::to_string` resolves to `Trait::to_string`. However, since we cannot perform trait selection during lowering, we report an error. This limitation could potentially be addressed in the future. See [_Future possibilities: Supporting type-relative paths_](#supporting-type-relative-paths).
 
 ### Desugaring of individual delegation: signature
 
@@ -563,7 +558,7 @@ WhereClause
 ```
 
 - Outer attributes (`#[attrs]`) are exactly those specified by the user at the delegation site, if any, plus [_default attributes_](#default-attributes).
-- Visibility (`pub(vis)`) is exactly as specified by the user at the delegation site.
+- Visibility (`pub(vis)`) is exactly as specified by the user at the delegation site. Also see [_Unresolved questions: Should the visibility of the delegation item be restricted?_](#should-the-visibility-of-the-delegation-item-be-restricted)
 - Function qualifiers(`FunctionQualifiers` - safety, constness, async-ness, ABI) are copied unchanged from the delegation resolution.
   - None of these qualifiers can be overridden ([?](#why-are-function-qualifiers-copied-unchanged)).
 - If the delegation item has `as name` clause, then `name` is used as the generated function's name, otherwise the final segment of `path` is used.
@@ -579,11 +574,6 @@ WhereClause
 >
 > Desugaring happens mainly during [AST lowering](https://rustc-dev-guide.rust-lang.org/hir/lowering.html). This is because once [HIR](https://rustc-dev-guide.rust-lang.org/hir.html) construction is complete the crate becomes immutable and code modification is no longer possible at that stage. The types and generics are then processed further during HIR -> Ty lowering.
 
-_See the following sections for unresolved questions_:
-
-- [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
-- [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
-
 #### Default attributes
 
 An `#[inline]` attribute is implicitly added to the generated function, unless the delegation item already has some `inline` attribute.
@@ -592,6 +582,8 @@ A `#[must_use]` attribute is implicitly added to the generated function if the d
 It is not currently possible the generated function non-`must_use` if the delegation resolution is `must_use`.
 
 In the future some other attributes may also be "inherited" similarly to `must_use`.
+
+Also see [_Unresolved questions: Which attributes should be added by default?_](#which-attributes-should-be-added-by-default)
 
 #### Path elaboration
 
@@ -681,9 +673,7 @@ However, if we wrote `Trait::<u8>::method` instead of just `Trait::method`, then
 
 </details>
 
-_See the following sections for future possibilities_:
-
-- [More sophisticated inference of generic parameters](#more-sophisticated-inference-of-generic-parameters)
+Also see [_Future possibilities: More sophisticated inference of generic parameters_](#more-sophisticated-inference-of-generic-parameters)
 
 #### `Self` identification and remapping
 
@@ -728,10 +718,9 @@ TODO: `self` only in the final expression? Prohibited in statements.
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-- [Design guiding principles](#design-guiding-principles)
-- [Design decisions outlined in this RFC](#design-decisions-outlined-in-this-rfc)
-- [Alternatives to this RFC](#alternatives-to-this-rfc)
-- TODO: we have some statistics and we can add it here
+- [_Design guiding principles_](#design-guiding-principles)
+- [_Design decisions outlined in this RFC_](#design-decisions-outlined-in-this-rfc)
+- [_Alternatives to this RFC_](#alternatives-to-this-rfc)
 
 ### Design guiding principles
 
