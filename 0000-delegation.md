@@ -9,6 +9,162 @@
 
 This RFC proposes a design for _delegation_: syntactic sugar for ergonomically forwarding function calls.
 
+<details>
+
+<summary> TLDR: delegation by example </summary>
+
+### Delegate any kind of function everywhere
+
+```rust
+trait Trait {
+    fn foo(&self) { println!("Hello") }
+    reuse S::bar { S /* any code in target expression */ }
+}
+
+struct S;
+impl Trait for S {}
+
+struct Wrapper(S);
+
+// One line impl reuse to delegate the whole trait.
+reuse impl Trait for Wrapper { self.0 }
+
+// In free context, with explicitly specified visibility
+// and attributes.
+#[inline]
+#[cold]
+pub reuse Trait::foo;
+
+impl S {
+    // In inherent impl with rename.
+    reuse Trait::foo as bar {
+        println!("Debug print");
+        self
+    }
+}
+```
+
+### Automatic adjustments, glob and list delegations
+
+```rust
+trait Trait {
+    fn static_f();
+    fn by_value(self);
+    fn by_ref(&self);
+    fn by_mut_ref(&mut self);
+}
+
+struct X<T>(T);
+impl<T: Trait> X<T> {
+    // List delegation.
+    // Target expression is automatically adjusted for each function
+    // and removed for function without receiver.
+    reuse <T as Trait>::{static_f, by_value as new_name} { self.0 }
+}
+
+struct X2<T>(T);
+impl<T: Trait> X2<T> {
+    // Glob delegation.
+    // Target expression is automatically adjusted for each function
+    // and removed for function without receiver.
+    reuse <T as Trait>::* { self.0 }
+}
+```
+
+### (Partial) specification of generic arguments
+
+```rust
+trait Marker<T> {}
+trait Trait<'a, T, const N: usize> {
+    fn foo<U: Marker<T>, const B: bool>(&self) {}
+}
+
+// Single infers are replaced by generated generic params,
+// clauses are also inhertied with substitutions: (`T` -> `()`).
+// User can entirelly omit generic arguments for path segment,
+// they will be generated in this case.
+reuse <_ as Trait<'static, (), _>>::foo::<_, false>;
+
+// Desugaring:
+fn foo<Self, const N: usize, U>(self: &Self) where U: Marker<()> {
+    <Self as Trait::<'static, (), N>>::foo::<U, false>(self) 
+}
+```
+
+### Recursive delegations
+
+Delegation can refer to another delegation as to the regular function.
+
+```rust
+trait Trait1 {
+    fn foo(&self) {}
+}
+
+impl Trait1 for () {}
+
+struct S1<T>(T);
+impl<T: Trait1> S1<T> {
+    reuse Trait1::foo { self.0 }
+}
+
+struct S2(S1<()>);
+impl S2 {
+    reuse S1::<()>::foo { self.0 }
+}
+
+reuse S2::foo;
+
+struct S3;
+impl S3 {
+    reuse foo;
+}
+
+impl Trait1 for S3 {
+    reuse S2::foo { &S2(S1(())) }
+}
+
+trait Trait2 {
+    reuse <S3 as Trait1>::foo { S3 }
+}
+
+reuse Trait2::foo as trait_foo;
+
+struct S4;
+impl S4 {
+    reuse trait_foo;
+}
+
+reuse S4::trait_foo as trait_foo_reused;
+```
+
+### Self type mapping and wrapping of the return value (experimental)
+
+```rust
+trait MyAdd {
+    fn add(self, other: Self) -> Box<Self>;
+}
+
+impl MyAdd for usize {
+    fn add(self, other: usize) -> Box<usize> {
+        Box::new(self + other)
+    }
+}
+
+struct W(Box<usize>);
+reuse impl MyAdd for W { self.0 }
+
+// Desugaring:
+fn add(self: W, arg1: W) -> Box<W> {
+    // We detect that arguments are of type `Self` so we are
+    // forced to apply target expression and adjustments to all of them,
+    // next we wrap return value into a newtype and adding `From::from` call
+    // to wrap the `W` into `Box`.
+    From::from(W { 0: MyAdd::add(self.0, self.0) })
+}
+```
+
+</details>
+
 ## Motivation
 
 ### Forwarding to a subobject
