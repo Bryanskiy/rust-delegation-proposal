@@ -858,7 +858,7 @@ From the delegation's perspective the alternatives can be categorized as follows
 
 1. Resolve the callee from the method name alone.
 
-    [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations ([?](#why-can-delegation-items-be-declared-in-any-position)) since it can lead to ambiguities in a similar way to method calls.
+    [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) suggested to use method name only to resolve the callee. This covers the most common scenario: delegating a trait implementation to another implementation of the same trait. However this syntax does not generalize naturally to other caller/callee combinations ([?](#why-can-delegation-items-be-declared-in-any-position)) since it can lead to ambiguities in a similar way to method calls.
 
 2. Resolve the callee from the fully qualified path.
 
@@ -866,13 +866,13 @@ From the delegation's perspective the alternatives can be categorized as follows
 
 3. Use keywords as disambiguators.
 
-    One of the suggestion from [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach doesn't generalize well to generic contexts. For example, it cannot distinguish between multiple generic implementations of the same trait.
+    One of the suggestion from [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use keywords (`trait`/`impl`/`fn`) e.g. (`reuse trait TraitName { expression }`) to disambiguate callee. However, this approach doesn't generalize well to generic contexts. For example, it cannot distinguish between multiple generic implementations of the same trait.
 
 
 The second option has been chosen for this proposal:
 
 1. The first reason is that fully qualified paths already provide a uniform and well‑understood mechanism for disambiguation. Reinventing a separate keyword‑based approach(or any other alternative) would add unnecessary complexity.
-2. The second reason is that the first option has already been proposed twice, in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
+2. The second reason is that the first option has already been proposed twice, in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). Rather than attempt the same approach a third time, this proposal comes at the problem from a different angle: name-based resolution can be reintroduced later as pure syntactic sugar layered on top of that mechanism. That keeps the door open to the first option in a forward-compatible way.
 
 <details>
 
@@ -944,9 +944,7 @@ impl<T> Trait<T> for Outer { reuse Trait::<()>::foo { self.0 } } // OK
 
 </details>
 
-_See the following sections for future possibilities_:
-
-- [Name-based resolution as sugar](#name-based-resolution-as-sugar)
+Also see [_Future possibilities: Name-based resolution as sugar_](#name-based-resolution-as-sugar)
 
 ↩ [Paths and name resolution](#paths-and-name-resolution)
 
@@ -1003,15 +1001,13 @@ If delegation item is in a trait implementation (e.g. `impl Trait for Type { /*d
 
 The `#[refine]` attribute proposed by RFC 3245 could potentially be used for changing the behavior from one to another. We suggest inheriting signatures from the trait by default.
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-signature)
 
 #### Why is visibility manually added instead of being copied from the callee?
 
 Delegation item is a distinct item that may deliberately want different behavior than its callee. This also avoids ambiguity for users about whether omitting a visibility modifier makes the delegation item private or causes it to inherit the callee's visibility.
 
-_See the following sections for unresolved questions_:
-
-- [Should the visibility of the delegation item be restricted?](#should-the-visibility-of-the-delegation-item-be-restricted)
+Also see [_Unresolved questions: Should the visibility of the delegation item be restricted?_](#should-the-visibility-of-the-delegation-item-be-restricted)
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -1043,9 +1039,7 @@ To support these transformations in their most general form, delegation items wo
 
 Attributes may affect diagnostics, linking, documentation, or the item's public API contract. Delegation item is a distinct item that may deliberately want different behavior than its callee. Auto-inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
 
-_See the following sections for unresolved questions_:
-
-- [Which attributes should be added by default?](#which-attributes-should-be-added-by-default)
+Also see [_Unresolved questions: Which attributes should be added by default?_](#which-attributes-should-be-added-by-default)
 
 ↩ [Reference-level explanation](#reference-level-explanation)
 
@@ -1063,8 +1057,8 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
 1. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
 2. It is not a new concept in Rust, as `use` declarations already support lists.
 3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-   1. `use expression for name_1, name_i` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
-   2. `delegate fn name_1, fn name_i to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+   1. `use expression for name_1, name_i` in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+   2. `delegate fn name_1, fn name_i to expression` in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
    3. `export path . { sel_1, ..., sel_n }` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
 
@@ -1077,10 +1071,10 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
 1. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
 2. It is not a new concept in Rust, as `use` declarations already support globs.
 3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-   1. `use expression` in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
-   2. `delegate * to expression` in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+   1. `use expression` in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+   2. `delegate * to expression` in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
    3. `by` clause forwards an entire interface in one declaration in Kotlin.
-   4. `#[delegate(Trait)]` delegates every method of `Trait` in [ambassador](https://crates.io/crates/ambassador).
+   4. `#[delegate(Trait)]` delegates every method of `Trait` in [crates.io/ambassador](https://crates.io/crates/ambassador).
    5. `export name.*` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
 ↩ [Reference-level explanation](#reference-level-explanation)
@@ -1103,8 +1097,8 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    </details>
 2. It is not a new concept in Rust, as `use` declarations already support renaming.
 3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-   1. `#[call(name)]` attribute in [delegate](https://crates.io/crates/delegate)
-   2. in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
+   1. `#[call(name)]` attribute in [crates.io/delegate](https://crates.io/crates/delegate)
+   2. in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) these are possible extensions
    3. `export A as B` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
 ↩ [Reference-level explanation](#reference-level-explanation)
@@ -1126,7 +1120,7 @@ The function header comprises qualifiers such as `const`, `async`, `unsafe`, `ex
 
 The proposal chooses to inherit all function qualifiers from the callee unchanged. The main problem with first approach is verbosity. Matching the callee's qualifiers is essentially the only sensible choice, yet that approach would force users to repeat qualifiers for delegation items.
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-signature)
 
 #### Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?
 
@@ -1149,7 +1143,7 @@ Two possible options to generate call are as follows:
 
 The first option should be chosen because otherwise the generated call may fail with a type inference error.
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-body)
 
 #### Why are statements not passed to the call?
 
@@ -1172,11 +1166,11 @@ Two possible options to generate call are as follows:
 
 TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600)
 
-↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation)
+↩ [Desugaring of individual delegation](#desugaring-of-individual-delegation-body)
 
 #### Why is the target expression a block expression?
 
-Unlike [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [guiding principles](#design-guiding-principles).
+Unlike [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [_guiding principles_](#design-guiding-principles).
 
 ↩ [Target expression](#target-expression)
 
@@ -1188,7 +1182,7 @@ The `;` form is effectively an alias for `{ self }`, providing a more ergonomic 
 
 #### Why target expression is not restricted?
 
-In the feedback to the [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) it was suggested that delegation be limited to fields. This suggestion was adopted in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
+In the feedback to the [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) it was suggested that delegation be limited to fields. This suggestion was adopted in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
 
 ↩ [Target expression](#target-expression)
 
@@ -1456,7 +1450,7 @@ TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/t
 
 #### Macros
 
-See [_crates.io/delegate_](#cratesiodelegate) and [_crates.io/ambassador_](#cratesioambassador) in prior art for a closer look at the two most widely used crates for this.
+See [_Prior art: delegate_](#cratesiodelegate) and [_Prior art: ambassador_](#cratesioambassador) in prior art for a closer look at the two most widely used crates for this.
 
 Both show that delegation can already be built as a library, with no change to the language, and both are mature and reasonably ergonomic. However, both are ultimately limited by what a macro can see: macros do not have access to type information such as the callee's resolved signature or the methods of a trait.
 
@@ -1476,13 +1470,13 @@ Rust could instead adopt some form of type embedding, where an anonymous field's
 
 Go has a working version of this idea. See [_Prior art: Type embeddings in Go_](#type-embeddings-in-go).
 
-[rfcs#2431](https://github.com/rust-lang/rfcs/issues/2431), opened in 2018, sketches a mechanism for Rust. The issue was posted as a rough idea seeking feedback, but it received little response and remains open with no further activity.
+[rust-lang/rfcs#2431](https://github.com/rust-lang/rfcs/issues/2431), opened in 2018, sketches a mechanism for Rust. The issue was posted as a rough idea seeking feedback, but it received little response and remains open with no further activity.
 
 #### Language support for newtypes
 
-An alternative to this RFC would be to add language support specifically for newtypes, allowing requested traits to be derived automatically. This narrower idea has been proposed repeatedly over the years: [rfcs#261](https://github.com/rust-lang/rfcs/issues/261), [rfcs#186](https://github.com/rust-lang/rfcs/pull/186), [rfcs#949](https://github.com/rust-lang/rfcs/pull/949), [rfcs#2242](https://github.com/rust-lang/rfcs/pull/2242), [rfcs#3596](https://github.com/rust-lang/rfcs/issues/3596), [rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951).
+An alternative to this RFC would be to add language support specifically for newtypes, allowing requested traits to be derived automatically. This narrower idea has been proposed repeatedly over the years: [rust-lang/rfcs#261](https://github.com/rust-lang/rfcs/issues/261), [rust-lang/rfcs#186](https://github.com/rust-lang/rfcs/pull/186), [rust-lang/rfcs#949](https://github.com/rust-lang/rfcs/pull/949), [rust-lang/rfcs#2242](https://github.com/rust-lang/rfcs/pull/2242), [rust-lang/rfcs#3596](https://github.com/rust-lang/rfcs/issues/3596), [rust-lang/rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951).
 
-The last attempt ([rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951)) was closed by the lang team with a [message](https://github.com/rust-lang/rfcs/pull/3951#issuecomment-4917471822):
+The last attempt ([rust-lang/rfcs#3951](https://github.com/rust-lang/rfcs/pull/3951)) was closed by the lang team with a [message](https://github.com/rust-lang/rfcs/pull/3951#issuecomment-4917471822):
 
 
 > We gave this a brief review in our @rust-lang/lang meeting today.
@@ -1503,9 +1497,9 @@ Also see [Rust book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inhe
 
 TODO: difference with previous - for each prior art say how this RFC is different (at high level)
 
-- [Delegation or similar mechanisms in other languages](#delegation-or-similar-mechanisms-in-other-languages)
-- [Related proposals in Rust](#related-proposals-in-Rust)
-- [Crates](#crates)
+- [_Delegation or similar mechanisms in other languages_](#delegation-or-similar-mechanisms-in-other-languages)
+- [_Related proposals in Rust_](#related-proposals-in-Rust)
+- [_Crates_](#crates)
 - TODO: other discussions
 
 ### Delegation or similar mechanisms in other languages
