@@ -1715,7 +1715,7 @@ The questions below are not expected to block acceptance of this RFC. Each is ei
 
 ### Which attributes should be added by default?
 
-Certain attributes may be reasonable to add or inherit from the callee by default. The current implementation adds the `#[inline]` attribute and copies `#[must_use]` attribute.
+Certain attributes may be reasonable to add or copy from the callee by default. The current implementation adds the `#[inline]` attribute and copies the `#[must_use]` attribute.
 
 There should also be a way to opt out of default attributes when they are not desired. For `#[inline]`, this may be done with `#[inline(never)]` on the delegation item, but the appropriate mechanism depends on the attribute, and some attributes may have no corresponding way to opt out.
 
