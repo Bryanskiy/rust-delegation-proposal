@@ -64,11 +64,11 @@ Delegation has long been discussed by the Rust community: it has motivated two p
 
 While forwarding to subobject methods remains the main motivating scenario, a sufficiently general mechanism for forwarding function calls can support other scenarios as well.
 - An inherent method on a type forwarding to a method from a trait implementation on the same type.
-- An enhanced "reexport" that adds attributes to an existing function definition.
+- A "reexport on steroids" that adds attributes to an existing function definition.
   - For example, target feature attributes. TODO: add an example from stdarch.
 - Any other scenario that takes the general form of a function calling another function with limited argument transformation.
 
-This part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form, leaving multiple possible delegation patterns as future extensions. In both cases, the forward-compatibility concerns were never addressed. Therefore, this proposal explores the design space more thoroughly.
+This part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form, leaving multiple possible delegation patterns as future extensions. In both cases, the forward-compatibility concerns were never addressed. Therefore, in this proposal we want to explore the design space more thoroughly.
 
 ## How to read this RFC
 
@@ -104,7 +104,7 @@ This RFC draws on the experimental implementation tracked in [rust-lang/rust#118
 Most of the examples in this proposal can be tried on nightly Rust.
 
 The nightly implementation is [feature-complete](https://en.wikipedia.org/wiki/Software_release_life_cycle#Feature-complete) and may even accept more code than this RFC describes, since its primary purpose was experimentation.
-Different parts of the implementation may have different levels of design maturity and polish. If the feature is stabilized, stabilization will take place in multiple stages.
+Different parts of the implementation may have different levels of design maturity and polish. If the feature is stabilized, stabilization will definitely take place in multiple stages.
 
 Some delegation subfeatures, such as delegation to inherent methods, may work in a limited way, since supporting them properly would require compiler reengineering to avoid query cycles. Some of these limitations are discussed throughout the proposal.
 
@@ -605,7 +605,7 @@ The following procedure is used for remapping each own parameter:
 - The generic argument corresponding to the parameter is identified in the last segment of the elaborated callee path.
 - If the generic argument is an inference placeholder (`_` or `'_`), then both the generic parameter definition and its uses stay in place.
   - Nested inference placeholders are not allowed ([?](#why-are-nested-inference-variables-not-allowed-in-paths)).
-- If the generic argument is not an inference placeholderence placeholder, then the generic parameter's definition is eliminated from the generated function and all its uses are replaced with that argument ([?](#why-might-child-parameters-need-to-be-substituted)).
+- If the generic argument is not an inference placeholder, then the generic parameter's definition is eliminated from the generated function and all its uses are replaced with that argument ([?](#why-might-child-parameters-need-to-be-substituted)).
 
 The following procedure is used for remapping the `Self` parent parameter:
 - If the parent context is an impl or a trait, then all the parameter's uses are replaced with the impl's or trait's self type.
@@ -613,7 +613,7 @@ The following procedure is used for remapping the `Self` parent parameter:
 - Otherwise, the generic argument corresponding to the `Self` parameter is identified in the elaborated qualified callee path.
 - If the generic argument is an inference placeholder, then uses of `Self` stay in place and remain unsubstituted.
   - Nested inference placeholders are not allowed.
-- If the generic argument is not an inference placeholderence placeholder, then all uses of the parameter are replaced with that argument.
+- If the generic argument is not an inference placeholder, then all uses of the parameter are replaced with that argument.
 
 The following procedure is used for remapping each non-`Self` parent parameter:
 - If the parent context is a trait impl (`impl Trait<Args> for ...`), then all the parameter's uses are replaced with the corresponding argument in `Args`.
@@ -623,7 +623,7 @@ The following procedure is used for remapping each non-`Self` parent parameter:
 - Otherwise, if the callee's parent is a trait, the generic argument corresponding to the parameter is identified in the trait segment of the elaborated callee path.
 - If the generic argument is an inference placeholder, then uses of the parameter stay in place and remain unsubstituted.
   - Nested inference placeholders are not allowed.
-- If the generic argument is not an inference placeholderence placeholder, then all uses of the parameter are replaced with that argument.
+- If the generic argument is not an inference placeholder, then all uses of the parameter are replaced with that argument.
 
 If any parent parameters in the signature or where clauses remain unsubstituted, an error is reported ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
 
@@ -712,7 +712,7 @@ impl Struct {
 reuse Struct::method;
 ```
 
-TODO: future possibilities — allow users to opt in to marking types as effective self types, or use type equality checks and allow users to opt out.
+TODO: future possibilities - allow users to opt in to marking types as effective self types, or use type equality checks and allow users to opt out.
 
 If a function parameter's type is an effective self type, possibly wrapped in one of the references or smart pointers mentioned in [items.associated.fn.method.self-ty](https://doc.rust-lang.org/reference/items/associated-items.html#r-items.associated.fn.method.self-ty), then let's call it an "effective self parameter".
 If the function's return type is an effective self type, without any additional wrapping, let's call it a "self return type".
@@ -720,7 +720,7 @@ If the function's return type is an effective self type, without any additional 
 In the generated function body, effective self parameters are converted using the delegation's target block, and self return types are converted using newtype wrapping.
 See the body desugaring chapter for details.
 
-TODO: future possibilities — extend the set of uses of the effective self type to which the conversions apply.
+TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
 
 ### Desugaring of individual delegation: body
 
