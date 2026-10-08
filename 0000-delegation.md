@@ -603,7 +603,7 @@ The delegation resolution's signature may contain:
 
 The following procedure is used for remapping each own parameter:
 - The generic argument corresponding to the parameter is identified in the last segment of the elaborated callee path.
-- If the generic argument is an inference placeholder (`_` or `'_`), then both the generic parameter definition and its uses stay in place.
+- If the generic argument is an inference placeholder (`_` or `'_`), then both the generic parameter definition and its uses stay in place ([?](#why-are-inference-variables-allowed-in-paths)).
   - Nested inference placeholders are not allowed ([?](#why-are-nested-inference-variables-not-allowed-in-paths)).
 - If the generic argument is not an inference placeholder, then the generic parameter's definition is eliminated from the generated function and all its uses are replaced with that argument ([?](#why-might-child-parameters-need-to-be-substituted)).
 
@@ -615,7 +615,7 @@ The following procedure is used for remapping the `Self` parent parameter:
   - Nested inference placeholders are not allowed.
 - If the generic argument is not an inference placeholder, then all uses of the parameter are replaced with that argument.
 
-The following procedure is used for remapping each non-`Self` parent parameter:
+The following procedure is used for remapping each non-`Self` parent parameter ([?](#why-might-parent-parameters-need-to-be-substituted)):
 - If the parent context is a trait impl (`impl Trait<Args> for ...`), then all the parameter's uses are replaced with the corresponding argument in `Args`.
   - Any matching arguments in the callee path are ignored.
     - This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
@@ -928,6 +928,121 @@ As established in the name resolution section, the callee may resolve to any of 
 
 ↩ [_Reference-level explanation_](#reference-level-explanation)
 
+#### Why is visibility manually added instead of being copied from the callee?
+
+A delegation item is a distinct item whose behavior may deliberately differ from that of its callee. This also avoids ambiguity for users about whether omitting a visibility modifier makes the delegation item private or causes it to inherit the callee's visibility.
+
+Also see [_Unresolved questions: Should the visibility of the delegation item be restricted?_](#should-the-visibility-of-the-delegation-item-be-restricted)
+
+↩ [_Reference-level explanation_](#reference-level-explanation)
+
+#### Why are attributes manually added instead of being copied from the callee?
+
+Attributes may affect diagnostics, linking, documentation, or the item's public API contract. A delegation item is a distinct item whose behavior may deliberately differ from that of its callee. Automatically inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
+
+Also see [_Unresolved questions: Which attributes should be added by default?_](#which-attributes-should-be-added-by-default)
+
+↩ [_Reference-level explanation_](#reference-level-explanation)
+
+#### Why `reuse`?
+
+The delegation syntax is generally modeled after `use` items to make it familiar and keep it within the syntax budget.
+The keyword is similar to `use` for the same reason: the callee function is not used directly, as with imports, but reused to create a new function.
+
+Alternative options like `delegate` or `forward` could also be considered, but they would benefit less from users' familiarity with `use` items.
+
+#### Why is list delegation supported?
+
+The syntax cost of supporting it is negligible compared with the benefit. Specifically:
+
+1. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
+2. It is not a new concept in Rust, as `use` declarations already support lists.
+3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+   1. `use expression for name_1, name_i` in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+   2. `delegate fn name_1, fn name_i to expression` in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+   3. `export path . { sel_1, ..., sel_n }` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
+
+
+↩ [_Reference-level explanation_](#reference-level-explanation)
+
+#### Why is glob delegation supported?
+
+The syntax cost of supporting it is negligible compared with the benefit. Specifically:
+
+1. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
+2. It is not a new concept in Rust, as `use` declarations already support globs.
+3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+   1. `use expression` in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
+   2. `delegate * to expression` in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
+   3. The `by` clause forwards an entire interface in one declaration in Kotlin.
+   4. `#[delegate(Trait)]` delegates every method of `Trait` in [crates.io/ambassador](https://crates.io/crates/ambassador).
+   5. `export name.*` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
+
+↩ [_Reference-level explanation_](#reference-level-explanation)
+
+#### Why is renaming supported?
+
+The syntax cost of supporting it is negligible compared with the benefit. Specifically:
+
+1. This will allow delegation from a trait implementation to a function that is not a method of the trait and has a different name from those defined in the trait.
+    <details>
+
+    <summary> Example: renaming in a trait implementation.</summary>
+
+   ```rust
+    impl<T> Default for BTreeSet<T> {
+        reuse BTreeSet::<T>::new as default;
+    }
+   ```
+
+   </details>
+2. It is not a new concept in Rust, as `use` declarations already support renaming.
+3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
+   1. `#[call(name)]` attribute in [crates.io/delegate](https://crates.io/crates/delegate)
+   2. In [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), renaming is a possible extension.
+   3. `export A as B` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
+
+↩ [_Reference-level explanation_](#reference-level-explanation)
+
+#### Why doesn't a delegation item provide syntax for introducing its own generics?
+
+Consider the example:
+
+```rust
+pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
+    T::to_vec(s, alloc)
+}
+```
+
+In principle, we could support this delegation pattern with syntax such as `reuse<T: ConvertVec, A: Allocator> T::to_vec;`. However, this would exceed our syntax budget (see [_guiding principles_](#design-guiding-principles)).
+
+↩ [_Reference-level explanation_](#reference-level-explanation)
+
+#### Why doesn't a delegation item provide syntax for argument or return-value transformations?
+
+There are several transformations one might reasonably want from the delegation feature:
+- Return value: converting the callee's return value using `.into()`, unwrapping a `Result`/`Option` with `.unwrap()`, awaiting a future returned by the callee with `.await`, etc.
+- Input arguments: reordering arguments or calling a method like `.as_ref()`, etc.
+
+To support these transformations in their most general form, delegation items would need something closer to preprocessing and postprocessing closures. We do not support these in the RFC, in accordance with our [_guiding principles_](#design-guiding-principles).
+
+↩ [_Reference-level explanation_](#reference-level-explanation)
+
+#### Why are glob delegations restricted?
+
+Glob delegations are only allowed in implementations, but not in modules or blocks.
+Modules can contain imports, both glob and single, and both make it harder to determine the set of names that would need to be "filtered out" from the glob delegation during its expansion.
+Also, the motivation for glob delegations in modules is not as strong as the motivation for glob delegations in impls, which can be used to delegate whole trait impls, so the additional complexity doesn't pull its weight.
+
+Glob delegations can only refer to traits, but not to modules.
+Modules can contain imports, both glob and single, and both make it harder to determine the set of names that would be produced by the glob delegation during its expansion.
+Modules typically contain other items rather than just functions, and delegating to them would result in errors with the current rules.
+Similarly, the motivation for glob delegation from modules is not very strong, and the complexity also doesn't pull its weight.
+
+List delegations list all their names explicitly, so they don't need any similar restrictions.
+
+↩ [_Glob delegation_](#glob-delegation)
+
 #### Why are qualified paths used for call disambiguation?
 
 Rust distinguishes between two kinds of function invocation. The first kind consists of [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution in that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed, or coerced. If more than one method is applicable, the compiler emits an error. The second kind consists of [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar), which can be used to resolve such ambiguities.
@@ -1027,21 +1142,6 @@ Also see [_Future possibilities: Name-based resolution as sugar_](#name-based-re
 
 ↩ [_Paths and name resolution_](#paths-and-name-resolution)
 
-#### Why are glob delegations restricted?
-
-Glob delegations are only allowed in implementations, but not in modules or blocks.
-Modules can contain imports, both glob and single, and both make it harder to determine the set of names that would need to be "filtered out" from the glob delegation during its expansion.
-Also, the motivation for glob delegations in modules is not as strong as the motivation for glob delegations in impls, which can be used to delegate whole trait impls, so the additional complexity doesn't pull its weight.
-
-Glob delegations can only refer to traits, but not to modules.
-Modules can contain imports, both glob and single, and both make it harder to determine the set of names that would be produced by the glob delegation during its expansion.
-Modules typically contain other items rather than just functions, and delegating to them would result in errors with the current rules.
-Similarly, the motivation for glob delegation from modules is not very strong, and the complexity also doesn't pull its weight.
-
-List delegations list all their names explicitly, so they don't need any similar restrictions.
-
-↩ [_Glob delegation_](#glob-delegation)
-
 #### Why is the delegation resolution the corresponding trait method in trait implementations?
 
 With the _“Refined trait implementations”_ RFC ([rust-lang/rfcs#3245](https://github.com/rust-lang/rfcs/pull/3245)), an implementation signature may be more specific than the one declared in the trait.
@@ -1082,106 +1182,6 @@ The `#[refine]` attribute proposed by RFC 3245 could potentially be used to swit
 
 ↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
 
-#### Why is visibility manually added instead of being copied from the callee?
-
-A delegation item is a distinct item whose behavior may deliberately differ from that of its callee. This also avoids ambiguity for users about whether omitting a visibility modifier makes the delegation item private or causes it to inherit the callee's visibility.
-
-Also see [_Unresolved questions: Should the visibility of the delegation item be restricted?_](#should-the-visibility-of-the-delegation-item-be-restricted)
-
-↩ [_Reference-level explanation_](#reference-level-explanation)
-
-#### Why doesn't a delegation item provide syntax for introducing its own generics?
-
-Consider the example:
-
-```rust
-pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
-    T::to_vec(s, alloc)
-}
-```
-
-In principle, we could support this delegation pattern with syntax such as `reuse<T: ConvertVec, A: Allocator> T::to_vec;`. However, this would exceed our syntax budget (see [_guiding principles_](#design-guiding-principles)).
-
-↩ [_Reference-level explanation_](#reference-level-explanation)
-
-#### Why doesn't a delegation item provide syntax for argument or return-value transformations?
-
-There are several transformations one might reasonably want from the delegation feature:
-- Return value: converting the callee's return value using `.into()`, unwrapping a `Result`/`Option` with `.unwrap()`, awaiting a future returned by the callee with `.await`, etc.
-- Input arguments: reordering arguments or calling a method like `.as_ref()`, etc.
-
-To support these transformations in their most general form, delegation items would need something closer to preprocessing and postprocessing closures. We do not support these in the RFC, in accordance with our [_guiding principles_](#design-guiding-principles).
-
-↩ [_Reference-level explanation_](#reference-level-explanation)
-
-#### Why are attributes manually added instead of being copied from the callee?
-
-Attributes may affect diagnostics, linking, documentation, or the item's public API contract. A delegation item is a distinct item whose behavior may deliberately differ from that of its callee. Automatically inheriting attributes would also mean a delegation item's behavior could change silently whenever the callee's attributes change, with no corresponding edit at the delegation site.
-
-Also see [_Unresolved questions: Which attributes should be added by default?_](#which-attributes-should-be-added-by-default)
-
-↩ [_Reference-level explanation_](#reference-level-explanation)
-
-#### Why `reuse`?
-
-The delegation syntax is generally modeled after `use` items to make it familiar and keep it within the syntax budget.
-The keyword is similar to `use` for the same reason: the callee function is not used directly, as with imports, but reused to create a new function.
-
-Alternative options like `delegate` or `forward` could also be considered, but they would benefit less from users' familiarity with `use` items.
-
-#### Why is list delegation supported?
-
-The syntax cost of supporting it is negligible compared with the benefit. Specifically:
-
-1. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
-2. It is not a new concept in Rust, as `use` declarations already support lists.
-3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-   1. `use expression for name_1, name_i` in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
-   2. `delegate fn name_1, fn name_i to expression` in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
-   3. `export path . { sel_1, ..., sel_n }` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
-
-
-↩ [_Reference-level explanation_](#reference-level-explanation)
-
-#### Why is glob delegation supported?
-
-The syntax cost of supporting it is negligible compared with the benefit. Specifically:
-
-1. Individual delegation is very close to a regular function call in terms of the amount of code written and is not particularly useful on its own. One of the main benefits of delegation comes from being able to delegate multiple items at once, avoiding repetitive declarations.
-2. It is not a new concept in Rust, as `use` declarations already support globs.
-3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-   1. `use expression` in [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406)
-   2. `delegate * to expression` in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393)
-   3. The `by` clause forwards an entire interface in one declaration in Kotlin.
-   4. `#[delegate(Trait)]` delegates every method of `Trait` in [crates.io/ambassador](https://crates.io/crates/ambassador).
-   5. `export name.*` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
-
-↩ [_Reference-level explanation_](#reference-level-explanation)
-
-#### Why is renaming supported?
-
-The syntax cost of supporting it is negligible compared with the benefit. Specifically:
-
-1. This will allow delegation from a trait implementation to a function that is not a method of the trait and has a different name from those defined in the trait.
-    <details>
-
-    <summary> Example: renaming in a trait implementation.</summary>
-
-   ```rust
-    impl<T> Default for BTreeSet<T> {
-        reuse BTreeSet::<T>::new as default;
-    }
-   ```
-
-   </details>
-2. It is not a new concept in Rust, as `use` declarations already support renaming.
-3. Some form of it appears in many prior attempts at delegation, demonstrating users' interest in this capability:
-   1. `#[call(name)]` attribute in [crates.io/delegate](https://crates.io/crates/delegate)
-   2. In [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), renaming is a possible extension.
-   3. `export A as B` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
-
-↩ [_Reference-level explanation_](#reference-level-explanation)
-
 #### Why are function qualifiers copied unchanged?
 
 The function header comprises qualifiers such as `const`, `async`, `unsafe`, and `extern "ABI"`. The following alternatives exist:
@@ -1201,75 +1201,67 @@ The proposal chooses to inherit all function qualifiers from the callee unchange
 
 ↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
 
-#### Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?
-
-Suppose we have a delegation item:
-
-```rust
-fn foo<T>(x: i32) {}
-reuse foo as bar;
-```
-
-There are two possible ways to generate the call:
-- Propagate generic parameters to the call:
-  ```rust
-  fn bar<T>() { foo::<T>() } // Ok
-  ```
-- Do not propagate generic parameters to the call:
-  ```rust
-  fn bar<T>() { foo() } // ERROR: type annotations needed
-  ```
-
-The first option should be chosen because otherwise the generated call may fail with a type inference error.
-
-↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
-
-#### Why are statements not passed to the call?
-
-Suppose we have a delegation item:
-
-```rust
-reuse path::name { let x = something; self.get(x) }
-```
-
-There are two possible ways to generate the call:
-- Pass the block expression unchanged:
-  ```rust
-  path::name(..., { let x = something; self.get(x) }, ...,)
-  ```
-- Hoist the statements out of the block:
-  ```rust
-  let x = something;
-  path::name(..., self.get(x), ...,)
-  ```
-
-TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600)
-
-↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
-
-#### Why is the target block a block expression?
-
-In contrast to [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), this RFC uses a block rather than a bare expression (e.g., a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form is consistent with our [_guiding principles_](#design-guiding-principles).
-
-↩ [_Target block_](#desugaring-of-individual-delegation-body)
-
-#### Why can the block expression be omitted?
-
-It provides a more ergonomic way to delegate free functions and methods without a receiver.
-
-↩ [_Target block_](#desugaring-of-individual-delegation-body)
-
-#### Why is the target block unrestricted?
-
-In feedback on [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), it was suggested that delegation be limited to fields. This suggestion was adopted in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However, we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
-
-↩ [_Target block_](#desugaring-of-individual-delegation-body)
-
 #### Why is delegation of variadic functions not supported?
 
 TODO: find the GitHub issue.
 
 ↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
+
+#### Why are inference variables allowed in paths?
+
+1. If substitution of own parameters is allowed, inference placeholders can be used to substitute only a subset of the parameters:
+   ```rust
+   pub fn foo<T, U>(x: T, y: U) { /* impl */ }
+   reuse foo::<i32, _> as bar;
+   ```
+   This could desugar to:
+   ```rust
+   pub fn bar<U>(x: i32, y: U) {
+      foo(x, y)
+   }
+   ```
+
+2. If a parameter isn't present in the signature or where clauses, there is nothing to substitute and we can omit the full name.
+
+↩ [_Generics remapping_](#generics-remapping)
+
+#### Why are nested inference variables not allowed in paths?
+
+> [!WARNING]
+>
+> The idea below is unconventional, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating a nested inference placeholder as an error remains the better default.
+
+Delegation could be made to work with nested inference placeholders (e.g., `Vec<_>`) by generating a new parameter for each placeholder:
+```rust
+ fn foo<T>(x: T) {}
+ reuse foo::<HashMap::<_, _>>;
+```
+
+This could desugar into:
+```rust
+fn bar<A, B>(x: HashMap<A, B>) {
+    foo::<HashMap::<_, _>>(x)
+}
+```
+
+↩ [_Generics remapping_](#generics-remapping)
+
+
+#### Why might child parameters need to be substituted?
+
+Consider the example:
+
+```rust
+pub const fn max_leb128_len<T>() -> usize { /* impl */ }
+
+pub const fn largest_max_leb128_len() -> usize {
+  max_leb128_len::<u128>()
+}
+```
+
+With the ability to provide generic arguments for own parameters, the `largest_max_leb128_len` implementation could be replaced with the delegation item `reuse max_leb128_len::<u128>`.
+
+↩ [_Generics remapping_](#generics-remapping)
 
 #### Why is the `Self` type not substituted?
 
@@ -1356,62 +1348,6 @@ reuse BTreeMap::<T, A>::contains_key as contains { self.map }
 
 ↩ [_Generics remapping_](#generics-remapping)
 
-#### Why might child parameters need to be substituted?
-
-Consider the example:
-
-```rust
-pub const fn max_leb128_len<T>() -> usize { /* impl */ }
-
-pub const fn largest_max_leb128_len() -> usize {
-  max_leb128_len::<u128>()
-}
-```
-
-With the ability to provide generic arguments for own parameters, the `largest_max_leb128_len` implementation could be replaced with the delegation item `reuse max_leb128_len::<u128>`.
-
-↩ [_Generics remapping_](#generics-remapping)
-
-#### Why are inference variables allowed in paths?
-
-1. If substitution of own parameters is allowed, inference placeholders can be used to substitute only a subset of the parameters:
-   ```rust
-   pub fn foo<T, U>(x: T, y: U) { /* impl */ }
-   reuse foo::<i32, _> as bar;
-   ```
-   This could desugar to:
-   ```rust
-   pub fn bar<U>(x: i32, y: U) {
-      foo(x, y)
-   }
-   ```
-
-2. If a parameter isn't present in the signature or where clauses, there is nothing to substitute and we can omit the full name.
-
-↩ [_Generics remapping_](#generics-remapping)
-
-#### Why are nested inference variables not allowed in paths?
-
-> [!WARNING]
->
-> The idea below is unconventional, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating a nested inference placeholder as an error remains the better default.
-
-Delegation could be made to work with nested inference placeholders (e.g., `Vec<_>`) by generating a new parameter for each placeholder:
-```rust
- fn foo<T>(x: T) {}
- reuse foo::<HashMap::<_, _>>;
-```
-
-This could desugar into:
-```rust
-fn bar<A, B>(x: HashMap<A, B>) {
-    foo::<HashMap::<_, _>>(x)
-}
-```
-
-↩ [_Generics remapping_](#generics-remapping)
-
-
 #### What happens if undefined generic parameters remain after substitution?
 
 Consider the example:
@@ -1461,6 +1397,70 @@ In this proposal, we suggest using the “report an error” option because it i
 Also see [_Future possibilities: More sophisticated inference of generic parameters_](#more-sophisticated-inference-of-generic-parameters)
 
 ↩ [_Generics remapping_](#generics-remapping)
+
+#### Why is the target block a block expression?
+
+In contrast to [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), this RFC uses a block rather than a bare expression (e.g., a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form is consistent with our [_guiding principles_](#design-guiding-principles).
+
+↩ [_Target block_](#desugaring-of-individual-delegation-body)
+
+#### Why is the target block unrestricted?
+
+In feedback on [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), it was suggested that delegation be limited to fields. This suggestion was adopted in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However, we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
+
+↩ [_Target block_](#desugaring-of-individual-delegation-body)
+
+#### Why can the block expression be omitted?
+
+It provides a more ergonomic way to delegate free functions and methods without a receiver.
+
+↩ [_Target block_](#desugaring-of-individual-delegation-body)
+
+#### Why are statements not passed to the call?
+
+Suppose we have a delegation item:
+
+```rust
+reuse path::name { let x = something; self.get(x) }
+```
+
+There are two possible ways to generate the call:
+- Pass the block expression unchanged:
+  ```rust
+  path::name(..., { let x = something; self.get(x) }, ...,)
+  ```
+- Hoist the statements out of the block:
+  ```rust
+  let x = something;
+  path::name(..., self.get(x), ...,)
+  ```
+
+TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600)
+
+↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
+
+#### Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?
+
+Suppose we have a delegation item:
+
+```rust
+fn foo<T>(x: i32) {}
+reuse foo as bar;
+```
+
+There are two possible ways to generate the call:
+- Propagate generic parameters to the call:
+  ```rust
+  fn bar<T>() { foo::<T>() } // Ok
+  ```
+- Do not propagate generic parameters to the call:
+  ```rust
+  fn bar<T>() { foo() } // ERROR: type annotations needed
+  ```
+
+The first option should be chosen because otherwise the generated call may fail with a type inference error.
+
+↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
 
 #### What happens if undefined generic parameters remain after substitution? Part 2.
 
