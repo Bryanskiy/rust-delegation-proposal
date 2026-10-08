@@ -724,6 +724,8 @@ TODO: future possibilities - extend the set of effective self type uses to which
 
 ### Desugaring of individual delegation: body
 
+#### Target block
+
 Target block is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that is used to transforms the delegation item's effective self parameters before they are forwarded to the resolved callee. There are no restrictions on the expressions that can be used inside the target block ([?](#why-target-expression-is-not-restricted)).
 
 Inside that block, `self` refers to an effective self parameter that will be transformed.
@@ -734,7 +736,9 @@ If the target block is omitted, then no parameter transformations happen, and de
 The target block contains a number of statements (possibly 0) and the optional trailing expression.
 If the trailing expression is omitted, then `self` is implicitly used as the trailing expression.
 
-Suppose that the generated function has `N` effective self parameters, then the target block is "disassembled" and its statements and trailing expression are inserted into the generated body `N` times, as described in the following example ([?](#why-are-statements-not-passed-to-the-call)).
+#### Body desugaring
+
+Suppose that the generated function has `N` effective self parameters, then the target block is "disassembled" and its statements and trailing expression are inserted into the generated body `N` times, as shown in the following example ([?](#why-are-statements-not-passed-to-the-call)).
 
 ```rust
 // target block
@@ -758,11 +762,28 @@ Suppose that the generated function has `N` effective self parameters, then the 
 }
 ```
 
+Note, that with these rules statements with side effects (e.g. `dbg!(&self);`) will execute the side effects once per effective self parameter.
+
 `ADJ` denotes the same set of adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature.
 
-The path `callee_path` is exactly as specified by the user, except that the generated functions's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
+All the remaining parameters, that are not effective self parameters, are forwarded unmodified, and the method call adjustments are also not applied to them, although implicit coercions may still apply.
 
-TODO: return value transformations
+The path `callee_path` is exactly as specified by the user, except that the generated functions's own generic parameters are substituted as arguments to the final segment, rather than left to inference ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
+
+In a trait implementation, the delegation resolution and the actual callee may be different functions.
+If some of the transformed and non-transformed parameters turns out to be incompatible with the callee's signature, a type checking error will be reported.
+
+#### Return type wrapping
+
+If the generated function's return type is a self return type, then the `callee_path` expression is additionally wrapped into a struct literal to perform "newtype wrapping".
+
+```rust
+Self { _: callee_path(...) }
+```
+
+`_` in this case refers to the single field of `Self`.
+If `Self` is not a structure (or union) with a single field, then an error will be reported.
+An error will also be reported if that field is somehow inaccessible from the delegation's definition site (e.g. too private).
 
 ## Drawbacks
 [drawbacks]: #drawbacks
