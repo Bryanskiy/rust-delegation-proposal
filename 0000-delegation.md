@@ -788,8 +788,11 @@ An error will also be reported if that field is somehow inaccessible from the de
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-1. Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
-2. The delegation feature could potentially be implemented as third-partly library with compile‑time [_reflection_](#reflection) (if and when that becomes available).
+Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case leaving complex transformations to manual coding or macros. This might limit its usefulness.
+
+The delegation feature could potentially be implemented as third-partly library with compile‑time [_reflection_](#reflection) (if and when that becomes available).
+
+TODO: future compatibility from removing target blocks with identity, from glob imports & default bodies
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -816,11 +819,11 @@ pub(vis) use prefix::{a, b, c as d};
 pub(vis) reuse prefix::{a, b, c as d} { target_expr }
 ```
 
-The motivation here is to avoid more complex features such as argument or return-value transformations, which would require pre- or post-processing closures. In such cases, the delegation item becomes less readable and more akin to a full function implementation. These transformations can instead be written manually or expressed using a macro (See [_Prior art_](#prior-art)).
+The motivation here is to avoid more complex features such as argument or return-value transformations, which would require pre- or post-processing closures. With additional bells and whistles like that, the delegation item becomes similar in wordy-ness to a full forwarding function implementation, but less readable. These transformations can instead be written manually or expressed using a macro (See [_Prior art_](#prior-art)).
 
 ### Rule №2: prefer generality over special casing
 
-If a pattern fits within the proposal's syntax budget and can be expressed by a single, uniform desugaring rule, support it, even when it is expected to be rare in practice, rather than limiting support to what appears to be the common case.
+If a pattern fits within the proposal's syntax budget and can be expressed by a single, uniform desugaring rule, support it, even when it is expected to be rare in practice, rather than limit the support to what appears to be the common case.
 
 This approach allows us to explore the design space more thoroughly, as discussed in the [_Motivation_](#generalisation) section.
 
@@ -830,7 +833,7 @@ This is a default, not an absolute, it may be violated when there is a sufficien
 
 #### Why can delegation items be declared in any position?
 
-Delegation is fundamentally the forwarding of function calls. A regular function in Rust may be a trait method, a method in a trait implementation, an inherent method, or a free function. We can form different combinations based on the position of a caller and a callee:
+Delegation is fundamentally a forwarding of function calls. A regular function in Rust may be a trait method, a method in a trait implementation, an inherent method, or a free function. We can form different combinations based on the position of a caller and a callee:
 
 <details>
 
@@ -916,7 +919,7 @@ pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
 
 etc.
 
-All these combinations appear in real world code via regular calls and each represents a potential target for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
+All these combinations appear in real world code via regular calls and each represents a potential use case for the delegation feature. Choosing which combinations to support is a design decision driven by multiple factors: the function call resolution algorithm, the available syntax budget, the frequency of the use case and the extensibility to other cases.
 
 Generality is particularly relevant in light of the existing prior art. The two previous delegation RFCs, [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), deliberately limited delegation to trait methods. Other proposals like [rust-lang/rfcs2375](https://github.com/rust-lang/rfcs/pull/2375) and [rust-lang/rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) address other use cases through different language mechanisms.
 
@@ -925,7 +928,7 @@ For the callee resolution to any variant is permitted as established in the name
 
 ↩ [_Reference-level explanation_](#reference-level-explanation)
 
-#### why are qualified paths used for call disambiguation?
+#### Why are qualified paths used for call disambiguation?
 
 Rust distinguishes between two kinds of function invocation. The first one is [method call expressions](https://doc.rust-lang.org/reference/expressions/method-call-expr.html), which have the form `receiver.method(args...)`. They are resolved to associated methods that take a receiver argument. Resolution it that case requires additional analysis by the compiler: the receiver may be automatically dereferenced, borrowed or coerced. If more than one method is applicable the compiler emits an error. The second kind is [fully qualified calls](https://doc.rust-lang.org/reference/expressions/call-expr.html#r-expr.call.desugar) which can be used to resolve such ambiguity.
 
