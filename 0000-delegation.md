@@ -90,7 +90,7 @@ TODO: 2 section:  we have parts that we are sure, we have parts that we implemen
 The following terminology is frequently used in this proposal:
 
 - _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method which forwards its arguments to the specified callee.
-- _target expression_ - an optional block expression which trailing expression transforms some of the generated function's arguments before those arguments are forwarded to the callee; usually, this is the method receiver.
+- _target block_ - an optional block expression which trailing expression transforms some of the generated function's arguments before those arguments are forwarded to the callee; usually, this is the method receiver.
 - _parent context_ - the parent item in which the delegation item appears. This can be a module or block (for free functions), a trait implementation, an inherent implementation, or a trait definition (for associated functions).
 - _desugaring_ - transformation of a delegation item into a regular function definition with signature and body.
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
@@ -137,7 +137,7 @@ impl<T: Hash> Hash for BTreeSet<T> {
 }
 ```
 
-The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target expression: a small block whose trailing expression is applied to some of the callee’s arguments, usually the receiver.
+The `reuse` item is a delegation item desugaring into a function definition, `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target block: a small block whose trailing expression is applied to some of the callee’s arguments, usually the receiver.
 
 ### Paths and callee disambiguation
 
@@ -165,7 +165,7 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 }
 ```
 
-Here, the `as into_iter` part gives the generated function the name the trait requires (see [_Renaming a delegated method_](#renaming-a-delegated-method) below). The target expression `{ self }` just passes the receiver through unchanged.
+Here, the `as into_iter` part gives the generated function the name the trait requires (see [_Renaming a delegated method_](#renaming-a-delegated-method) below). The target block `{ self }` just passes the receiver through unchanged.
 
 So, paths help to unambiguously identify the function to which we are forwarding. It also worth mentioning that when delegating to type-relative paths, as with `BTreeSet::<T>::iter` above, it is currently necessary to specify the type's generic arguments. But the limitation could be fixed in the future.
 
@@ -201,7 +201,7 @@ impl<T> BTreeSet<T> {
 }
 ```
 
-Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target expression `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
+Each generated method gets the receiver its callee needs: `clear` needs to mutate the map, so the method the reuse generates takes `&mut self`, while `len` and `is_empty` only need to read it, so those take the shared reference `&self`. The target block `{ self.map }` is the same in all 3 cases, you don't have to write the references by hand, the autoref/autoderef happens automatically with its usual rules.
 
 ### Renaming a delegated method
 
@@ -217,7 +217,7 @@ You can see that the syntax of `reuse` items is generally modeled after `use` it
 
 ### Methods without receiver
 
-So far, the target expression has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. But not every forwarded method has a receiver. `Default::default` has no arguments at all: the `Default` implementation of `BTreeSet` just calls the inherent function `new`:
+So far, the target block has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. But not every forwarded method has a receiver. `Default::default` has no arguments at all: the `Default` implementation of `BTreeSet` just calls the inherent function `new`:
 
 ```rust
 impl<T> Default for BTreeSet<T> {
@@ -235,13 +235,13 @@ impl<T> Default for BTreeSet<T> {
 }
 ```
 
-The target expression is applied to the TODO, and there are none here, so `{ self }` has nothing to do.
+The target block is applied to the TODO, and there are none here, so `{ self }` has nothing to do.
 
 TODO: this semantics will allow to delegation methods without receiver inside list and globs delegations.
 
 ### Omitting block expression
 
-In [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) and [_Methods without receiver_](#methods-without-receiver) sections we saw that the target expression `{ self }` is used. In such cases, it carries no information and can be omitted entirely, with the item ending in a semicolon instead:
+In [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) and [_Methods without receiver_](#methods-without-receiver) sections we saw that the target block `{ self }` is used. In such cases, it carries no information and can be omitted entirely, with the item ending in a semicolon instead:
 
 ```rust
 impl<'a, T> IntoIterator for &'a BTreeSet<T> {
@@ -282,7 +282,7 @@ impl<T: PartialEq> PartialEq for BTreeSet<T> {
 }
 ```
 
-`BTreeMap::eq` compares two maps, so the target expression must be applied not only to `self`, but also to `other`.
+`BTreeMap::eq` compares two maps, so the target block must be applied not only to `self`, but also to `other`.
 
 ### Delegating methods that return the wrapper
 
@@ -308,7 +308,7 @@ impl<T: Clone> Clone for BTreeSet<T> {
 }
 ```
 
-Both methods share the target expression `{ self.map }`. The value returned by `Clone::clone` is wrapped, the target expression is applied to the `source` argument of `Clone::clone_from`, and neither has to be spelled out.
+Both methods share the target block `{ self.map }`. The value returned by `Clone::clone` is wrapped, the target block is applied to the `source` argument of `Clone::clone_from`, and neither has to be spelled out.
 
 ### Delegating a whole trait
 
@@ -395,7 +395,7 @@ List, glob and impl delegations are three kinds of higher level syntactic sugar 
 
 List delegation defines several items at once from a shared path prefix. It desugars to one individual delegation item per name.
 
-Target expressions, generic arguments and other components are copied at token stream level, making list delegation a macro feature.
+Target blocks, generic arguments and other components are copied at token stream level, making list delegation a macro feature.
 
 ```rust
 reuse prefix::<Args>::{a, b, c} { target };
@@ -407,7 +407,7 @@ reuse prefix::<Args>::b { target };
 reuse prefix::<Args>::c { target };
 ```
 
-If target expression or a generic argument contains something having an identity, like an item or a closure, then it is also copied as tokens, and multiple different and independent items or closures will be created as a result ([extended rationale](https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2020869823)).
+If target block or a generic argument contains something having an identity, like an item or a closure, then it is also copied as tokens, and multiple different and independent items or closures will be created as a result ([extended rationale](https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2020869823)).
 
 ```rust
 reuse prefix::{a, b} {
@@ -443,7 +443,7 @@ The set of names for which individual delegation items are produced is determine
 Note, that individual delegations are still generated for functions having default bodies in the target trait definition.
 This way manual implementations for such functions with default bodies are correctly propagated.
 
-Similarly to list delegations, target expressions, generic arguments and other components are copied at token stream level, making glob delegation a macro feature.
+Similarly to list delegations, target blocks, generic arguments and other components are copied at token stream level, making glob delegation a macro feature.
 
 Empty glob delegations are currently prohibited (See [_Future possibilities: Empty list delegation_](#empty-list-delegation)).
 
@@ -717,26 +717,26 @@ TODO: future possibilities - opt in to mark as effself, or type equality checks 
 If a function parameter's type is an effective self type, possibly wrapped into one of references or smart pointers mentioned in [items.associated.fn.method.self-ty](https://doc.rust-lang.org/reference/items/associated-items.html#r-items.associated.fn.method.self-ty), then let's call it an "effective self parameter".
 If the function's return type is an effective self type, without any additional wrapping, the let's call it "self return type".
 
-In the generated function body effective self parameters are converted using the delegation's target expression, and self return types are converted using newtype wrapping.
+In the generated function body effective self parameters are converted using the delegation's target block, and self return types are converted using newtype wrapping.
 See the body desugaring chapter for details.
 
 TODO: future possibilities - extend the set of effective self type uses to which the conversions apply.
 
 ### Desugaring of individual delegation: body
 
-Target expression is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that is used to transforms the delegation item's effective self parameters before they are forwarded to the resolved callee. There are no restrictions on the expressions that can be used inside the target expression ([?](#why-target-expression-is-not-restricted)).
+Target block is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that is used to transforms the delegation item's effective self parameters before they are forwarded to the resolved callee. There are no restrictions on the expressions that can be used inside the target block ([?](#why-target-expression-is-not-restricted)).
 
 Inside that block, `self` refers to an effective self parameter that will be transformed.
 
-If the target expression is omitted, then no parameter transformations happen, and delegating to functions with 0 parameters also always works ([?](#why-can-the-block-expression-be-omitted)).
+If the target block is omitted, then no parameter transformations happen, and delegating to functions with 0 parameters also always works ([?](#why-can-the-block-expression-be-omitted)).
 
-The target expression contains a number of statements (possibly 0) and the optional trailing expression.
+The target block contains a number of statements (possibly 0) and the optional trailing expression.
 If the trailing expression is omitted, then `self` is implicitly used as the trailing expression.
 
-If the generated function has N effective self parameters, then the target expression is "disassembled" and then inserted N times.
+If the generated function has N effective self parameters, then the target block is "disassembled" and then inserted N times.
 
 TODO:
-- The target expression consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_Target expression_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
+- The target block consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_target block_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
 - `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature.
 - The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
 - TODO: return value transformations
@@ -1214,23 +1214,23 @@ TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-21971
 
 ↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
 
-#### Why is the target expression a block expression?
+#### Why is the target block a block expression?
 
 Unlike [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) a block was chosen over a bare expression (e.g. a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form fits is consistent with our [_guiding principles_](#design-guiding-principles).
 
-↩ [_Target expression_](#desugaring-of-individual-delegation-body)
+↩ [_target block_](#desugaring-of-individual-delegation-body)
 
 #### Why can the block expression be omitted?
 
 It provides a more ergonomic way to delegate free functions and methods without a receiver.
 
-↩ [_Target expression_](#desugaring-of-individual-delegation-body)
+↩ [_target block_](#desugaring-of-individual-delegation-body)
 
-#### Why target expression is not restricted?
+#### Why target block is not restricted?
 
 In the feedback to the [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) it was suggested that delegation be limited to fields. This suggestion was adopted in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
 
-↩ [_Target expression_](#desugaring-of-individual-delegation-body)
+↩ [_target block_](#desugaring-of-individual-delegation-body)
 
 #### Why is delegation of variadic functions not supported?
 
@@ -1415,7 +1415,7 @@ Where `?K` denotes a parameter that has been copied but not remapped. There are 
 
 1. Report an error.
 2. We can try to infer from the given context:
-   1. From the target expression: `typeof(self.map) == BTreeMap::<T, ()>`
+   1. From the target block: `typeof(self.map) == BTreeMap::<T, ()>`
 
       We would need to typecheck the function body before generating the full signature, which is not possible with the current compiler architecture. TODO: same problem as for inherent impls. Add link.
 
