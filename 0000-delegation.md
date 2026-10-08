@@ -727,33 +727,42 @@ TODO: future possibilities - extend the set of effective self type uses to which
 Target block is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-expression-a-block-expression)) that is used to transforms the delegation item's effective self parameters before they are forwarded to the resolved callee. There are no restrictions on the expressions that can be used inside the target block ([?](#why-target-expression-is-not-restricted)).
 
 Inside that block, `self` refers to an effective self parameter that will be transformed.
+If the generated function has 0 effective self parameters, then it's an error to specify the target block, unless the current delegation item was defined as a part of list or glob delegation, in which at least one other item has an effective self parameter.
 
-If the target block is omitted, then no parameter transformations happen, and delegating to functions with 0 parameters also always works ([?](#why-can-the-block-expression-be-omitted)).
+If the target block is omitted, then no parameter transformations happen, and delegated functions without effective self parameters also works ([?](#why-can-the-block-expression-be-omitted)).
 
 The target block contains a number of statements (possibly 0) and the optional trailing expression.
 If the trailing expression is omitted, then `self` is implicitly used as the trailing expression.
 
-If the generated function has N effective self parameters, then the target block is "disassembled" and then inserted N times.
-
-TODO:
-- The target block consists of a list of statements (`target_expr_stmt_i`) and a final optional expression(`target_expr_operand`). In the generated function body, the statements come first ([?](#why-are-statements-not-passed-to-the-call)), followed by the function forwarding call. The arguments to which the `target_expr_operand` is applied along with other related rules are specified in the [_target block_](#target-expression) section. Usually, the `target_expr_operand` is applied to the method receiver.
-- `ADJ` denotes the same adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature.
-- The path (`path`) is exactly as specified by the user, except that the delegation resolution's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
-- TODO: return value transformations
+Suppose that the generated function has `N` effective self parameters, then the target block is "disassembled" and its statements and trailing expression are inserted into the generated body `N` times, as described in the following example ([?](#why-are-statements-not-passed-to-the-call)).
 
 ```rust
-#[attrs]
-pub(vis) FunctionQualifiers fn name<GenericParams>(..., argN: ArgN, ...) -> FunctionReturnType
-WhereClause
+// target block
 {
-    target_expr_stmt_1;
+    target_stmt_1(self);
+    ...
+    target_stmt_M(self);
+    target_expr(self)
+}
+
+// generated body, param1..paramN are the effective self parameters
+(..., param1: Type1, ..., paramN: TypeN) {
+    target_stmt_1(param1);
+    ...
+    target_expr_M(param1);
+    ...
+    target_stmt_1(paramN);
     ....
-    target_expr_stmt_n;
-    path(..., ADJ(target_expr_operand(argN)), ...)
+    target_expr_M(paramN);
+    callee_path(..., ADJ(target_expr(param1)), ..., ADJ(target_expr(paramN)), ...)
 }
 ```
 
-TODO: callee might have no receiver, might take receiver by value(`self: Self`), by reference (`self: &Self`), by mut reference(`self: &mut Self`) or even more complex types after introduction of `arbitrary_self_types` feature.
+`ADJ` denotes the same set of adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make it match the callee's signature.
+
+The path `callee_path` is exactly as specified by the user, except that the generated functions's own generic parameters are substituted as arguments to the final segment ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
+
+TODO: return value transformations
 
 ## Drawbacks
 [drawbacks]: #drawbacks
