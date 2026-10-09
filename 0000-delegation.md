@@ -15,6 +15,7 @@ This RFC proposes a design for _delegation_: syntactic sugar for ergonomically f
 
 Rust [deliberately](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#inheritance-as-a-type-system-and-as-code-sharing) does not provide the kind of data inheritance common in object-oriented languages where a derived type automatically inherits methods from a base type. Instead, Rust typically expresses this pattern through composition: the "base" type is embedded inside the "derived" type as a field (possibly nested) or another form of subobject. With composition, methods that would be inherited automatically in other languages must instead be implemented manually, often with the help of macros. Consider a common pattern [found](https://github.com/rust-lang/rust/blob/ad2e756c7093149e25f67a747e579a49b7e6976e/library/core/src/iter/adapters/flatten.rs#L55-L104) throughout real Rust codebases:
 
+<!-- compile-fail: incomplete -->
 ```rust
 impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
 where
@@ -49,11 +50,13 @@ This situation highlights a gap in Rust’s ergonomics: while Rust provides powe
 
 This RFC aims to address this limitation by introducing a delegation feature. With delegation, the forwarding implementation above could be rewritten as follows:
 
+<!-- compile-fail: not for all of the `Iterator` methods delegation is currently supported on nightly -->
 ```rust
 impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
 where
     F: FnMut(I::Item) -> U,
 {
+    type Item = I::Item;
     reuse Iterator::* { self.inner }
 }
 ```
@@ -197,7 +200,7 @@ The main advantage of delegation comes with the ability to delegate multiple ite
 
 ```rust
 impl<T> BTreeSet<T> {
-    reuse BTreeMap<T, ()>::{len, is_empty, clear, capacity} { self.map }
+    reuse BTreeMap::<T, ()>::{len, is_empty, clear} { self.map }
 }
 ```
 
@@ -215,6 +218,22 @@ impl<T> BTreeSet<T> {
 
 You can see that the syntax of `reuse` items is generally modeled after `use` items.
 
+### Omitting the block expression
+
+In the [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) we used the target block `{ self }`. In such cases, it carries no information and can be omitted entirely, with the item ending in a semicolon instead:
+
+```rust
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    reuse BTreeSet::<T>::iter as into_iter;
+}
+```
+
+This is purely syntactic sugar: `reuse path;` stands for `reuse path { self }`.
+Although in some cases, when the delegated function has no `self` argument, an explicit target block is not allowed, but the semicolon form will work.
+
 ### Methods without a receiver
 
 So far, the target block has been applied only to the callee’s receiver, while the remaining arguments (such as the `state` argument of `Hash::hash`) have been passed through unchanged. But not every forwarded method has a receiver. `Default::default` has no arguments at all: the `Default` implementation of `BTreeSet` just calls the inherent function `new`:
@@ -231,36 +250,11 @@ With delegation, the same implementation could look like this:
 
 ```rust
 impl<T> Default for BTreeSet<T> {
-    reuse BTreeSet::<T>::new as default { self }
-}
-```
-
-The target block is applied to TODO parameters. There are none here, so `{ self }` has nothing to do.
-
-TODO: these semantics will allow methods without a receiver to be delegated within list and glob delegations.
-
-### Omitting the block expression
-
-In the [_Paths and callee disambiguation_](#paths-and-callee-disambiguation) and [_Methods without a receiver_](#methods-without-a-receiver) sections, we used the target block `{ self }`. In such cases, it carries no information and can be omitted entirely, with the item ending in a semicolon instead:
-
-```rust
-impl<'a, T> IntoIterator for &'a BTreeSet<T> {
-    type Item = &'a T;
-    type IntoIter = Iter<'a, T>;
-
-    reuse BTreeSet::<T>::iter as into_iter;
-}
-```
-
-and
-
-```rust
-impl<T> Default for BTreeSet<T> {
     reuse BTreeSet::<T>::new as default;
 }
 ```
 
-This is purely syntactic sugar: `reuse path;` stands for `reuse path { self }`.
+The target block must be omitted here because the delegated function has no parameters.
 
 ### Delegating binary operators
 
@@ -276,6 +270,7 @@ impl<T: PartialEq> PartialEq for BTreeSet<T> {
 
 With delegation, the same implementation could look like this:
 
+<!-- compile-fail: nightly doesn't support `Self` identification in generic parameter defaults yet -->
 ```rust
 impl<T: PartialEq> PartialEq for BTreeSet<T> {
     reuse PartialEq::eq { self.map }
@@ -302,6 +297,7 @@ impl<T: Clone> Clone for BTreeSet<T> {
 
 Both methods can be delegated using the list syntax shown above:
 
+<!-- compile-fail: nightly currently hardcodes the field name to `0`, but BTreeSet has a named field called `map` -->
 ```rust
 impl<T: Clone> Clone for BTreeSet<T> {
     reuse Clone::{clone, clone_from} { self.map }
@@ -314,6 +310,7 @@ Both methods share the target block `{ self.map }`. The value returned by `Clone
 
 `Clone` has only these two methods, so instead of listing them we can delegate all of them with a glob:
 
+<!-- compile-fail: nightly currently hardcodes the field name to `0`, but BTreeSet has a named field called `map` -->
 ```rust
 impl<T: Clone> Clone for BTreeSet<T> {
     reuse Clone::* { self.map }
@@ -322,6 +319,7 @@ impl<T: Clone> Clone for BTreeSet<T> {
 
 A glob delegation item behaves as if all the methods of the trait were listed, including those with default implementations. `clone_from` is such a method. A glob delegation can also be written as follows:
 
+<!-- compile-fail: nightly currently hardcodes the field name to `0`, but BTreeSet has a named field called `map` -->
 ```rust
 reuse impl<T: Clone> Clone for BTreeSet<T> { self.map }
 ```
@@ -398,17 +396,18 @@ List delegation defines several items at once from a shared path prefix. It desu
 Target blocks, generic arguments, and other components are copied at the token-stream level, making list delegation a macro feature.
 
 ```rust
-reuse prefix::<Args>::{a, b, c} { target };
+reuse prefix::<Args>::{a, b, c} { target }
 ```
 expands to
 ```rust
-reuse prefix::<Args>::a { target };
-reuse prefix::<Args>::b { target };
-reuse prefix::<Args>::c { target };
+reuse prefix::<Args>::a { target }
+reuse prefix::<Args>::b { target }
+reuse prefix::<Args>::c { target }
 ```
 
 If a target block or a generic argument contains something with an identity, such as an item or a closure, it is also copied as tokens. As a result, multiple distinct, independent items or closures are created ([extended rationale](https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2020869823)).
 
+<!-- compile-fail: some unresolved names -->
 ```rust
 reuse prefix::{a, b} {
     use some::import; // import
@@ -451,6 +450,7 @@ Empty glob delegations are currently prohibited (see [_Future possibilities: Emp
 
 <summary> Example: desugaring of glob delegation.</summary>
 
+<!-- compile-fail: things are omitted for brevity -->
 ```rust
 trait Trait<Args> {
     fn a() {} // has default body
@@ -459,15 +459,15 @@ trait Trait<Args> {
 }
 impl Trait<Args> for Type {
     fn c() {} // explicitly defined name
-    reuse Trait::<Args>::* { target };
+    reuse Trait::<Args>::* { target }
 }
 ```
 expands to
 ```rust
 impl Trait<Args> for Type {
     fn c() {} // explicitly defined name, not delegated
-    reuse prefix::<Args>::a { target }; // delegated, despite the default body
-    reuse prefix::<Args>::b { target };
+    reuse prefix::<Args>::a { target } // delegated, despite the default body
+    reuse prefix::<Args>::b { target }
 }
 ```
 
@@ -477,6 +477,7 @@ impl Trait<Args> for Type {
 
 Impl delegation is a second layer of syntactic sugar that makes it convenient to write a trait impl containing a glob delegation to the same trait.
 
+<!-- compile-fail: some unresolved names -->
 ```rust
 reuse impl Trait<Args> for Type { target }
 ```
@@ -543,6 +544,7 @@ For delegations defined in a trait implementation, the delegation resolution is 
 
 The generated function header for an individual delegation has the following form:
 
+<!-- compile-fail: some unresolved names -->
 ```rust
 #[attrs]
 pub(vis) reuse path as name { target_expr }
@@ -678,13 +680,14 @@ Also see [_Future possibilities: More sophisticated inference of generic paramet
 To increase the usefulness of delegation and provide better support for newtypes, we need to identify types that are "actually `Self`" in method signatures, not just for the `self` parameter but also for other parameters and the return type.
 
 For example, the occurrences of `Struct` in `other: Struct` and `-> Struct` in the following impl are "actually `Self`".
+
 ```rust
 trait Trait {
     fn method(self, other: Self) -> Self;
 }
 
 impl Trait for Struct {
-    fn method(self, other: Struct) -> Struct {}
+    fn method(self, other: Struct) -> Struct { todo!() }
 }
 ```
 Let's call such types in signatures "effective self types".
@@ -703,9 +706,10 @@ we also need to treat `Rhs` as a self type if it was obtained from the `Self` pa
 If the delegation resolution is an inherent method with `self`, then its corresponding type is considered an effective self type in the generated function.
 
 In all other cases, types in signatures are not considered effective self types. In particular, effective self types are *not* detected by tracking uses of the `Self` type alias in impls (as opposed to the `Self` parameter in traits) or by checking type equality.
+
 ```rust
 impl Struct {
-    fn method(self, other1: Self, other2: Struct) { ... }
+    fn method(self, other1: Self, other2: Struct) {}
 }
 
 // Types of `other1` and `other2` are not considered effective self types here.
@@ -740,6 +744,7 @@ If the trailing expression is omitted, then `self` is implicitly used as the tra
 
 Suppose that the generated function has `N` effective self parameters. Then the target block is "disassembled" and its statements and trailing expression are inserted into the generated body `N` times, as shown in the following example ([?](#why-are-statements-not-passed-to-the-call)).
 
+<!-- compile-fail: incomplete code -->
 ```rust
 // target block
 {
@@ -826,7 +831,7 @@ trait MyAdd {
 }
 
 impl MyAdd for usize {
-    fn add(self, other: usize) -> usize { ... }
+    fn add(self, other: usize) -> usize { self + other }
 }
 
 struct W(usize);
@@ -867,6 +872,7 @@ A recurring question throughout this RFC is whether a particular delegation patt
 
 Delegation items should use syntax that is no more complex than that of `use` imports.
 
+<!-- compile-fail: some unresolved names -->
 ```rust
 // Import item
 #[attrs]
@@ -901,7 +907,6 @@ Delegation fundamentally forwards function calls. A regular function in Rust may
 
 ```rust
 pub struct Drain<'a> {
-    ...
     iter: Chars<'a>,
 }
 
@@ -912,7 +917,6 @@ impl Iterator for Drain<'_> {
     fn next(&mut self) -> Option<char> {
         self.iter.next()
     }
-    ...
 }
 ```
 
@@ -925,8 +929,8 @@ impl Iterator for Drain<'_> {
 
 ```rust
 trait ZipImpl<A, B> {
+    type Item;
     fn next(&mut self) -> Option<Self::Item>;
-    ...
 }
 
 impl<A, B> Iterator for Zip<A, B>
@@ -940,7 +944,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         ZipImpl::next(self)
     }
-    ...
 }
 ```
 
@@ -956,7 +959,6 @@ impl<T> HashSet<T, RandomState> {
     pub fn new() -> HashSet<T, RandomState> {
         Default::default()
     }
-    ...
 }
 ```
 
@@ -1290,6 +1292,8 @@ TODO: find the GitHub issue.
 > The idea below is unconventional, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating a nested inference placeholder as an error remains the better default.
 
 Delegation could be made to work with nested inference placeholders (e.g., `Vec<_>`) by generating a new parameter for each placeholder:
+
+<!-- compile-fail: not currently supported -->
 ```rust
  fn foo<T>(x: T) {}
  reuse foo::<HashMap::<_, _>>;
@@ -1310,7 +1314,7 @@ fn bar<A, B>(x: HashMap<A, B>) {
 Consider the example:
 
 ```rust
-pub const fn max_leb128_len<T>() -> usize { /* impl */ }
+pub const fn max_leb128_len<T>() -> usize { /* impl */ 42 }
 
 pub const fn largest_max_leb128_len() -> usize {
   max_leb128_len::<u128>()
@@ -1327,21 +1331,19 @@ In the name resolution section, we provided an example of how the `Self` type ca
 
 ```rust
 trait Iterator {
+    type Item;
     fn any<F>(&mut self, f: F) -> bool
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> bool,
-    { /* impl */ }
-    ...
+        F: FnMut(Self::Item) -> bool;
 }
-...
+
 pub struct UnordItems<T, I: Iterator<Item = T>>(I);
 
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     pub fn any<F: Fn(T) -> bool>(mut self, f: F) -> bool {
         self.0.any(f)
     }
-  ...
 }
 ```
 
@@ -1374,11 +1376,11 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    { /* impl */ }
+    { /* impl */ false }
 }
-...
+
 impl<T, A: AllocatorClone> BTreeSet<T, A> {
-    reuse BTreeMap::contains_key as contains { self.map }
+    reuse BTreeMap::contains_key as contains { self.map } // ERROR
 }
 ```
 
@@ -1401,7 +1403,7 @@ Here, `Q` can be copied directly because it is one of `BTreeMap::contains_key`'s
 To make the example work, the parameter can be explicitly substituted through the path:
 
 ```rust
-reuse BTreeMap::<T, A>::contains_key as contains { self.map }
+reuse BTreeMap::<T, (), A>::contains_key as contains { self.map }
 ```
 
 ↩ [_Generics remapping_](#generics-remapping)
@@ -1416,11 +1418,11 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    { /* impl */ }
+    { /* impl */ false }
 }
-...
+
 impl<T, A: AllocatorClone> BTreeSet<T, A> {
-    reuse BTreeMap::contains_key as contains { self.map }
+    reuse BTreeMap::contains_key as contains { self.map } // ERROR
 }
 ```
 
@@ -1532,10 +1534,8 @@ If an undefined generic parameter remains in the signature or where clauses afte
 trait Ord: Eq + PartialOrd<Self> {
     fn min(self, other: Self) -> Self
     where
-        Self: Sized {...}
+        Self: Sized;
 }
-
-...
 
 fn min<T: Ord + Sized>(v1: T, v2: T) -> T {
      Ord::min(v1, v2)
@@ -1558,7 +1558,7 @@ In principle, this could extend beyond `Self` to any parent parameter, but doing
 trait Trait1 {}
 
 trait Trait<'a, A: Trait1, C = i32> {
-    fn foo<'b, B>(&self, x: A, y: B, c: C) { ... }
+    fn foo<'b, B>(&self, x: A, y: B, c: C);
 }
 
 reuse Trait::foo;
@@ -1740,6 +1740,7 @@ The main reasons for rejecting the proposal were:
 
 This RFC proposes an `#[inherent]` attribute that allows a trait implementation's methods to be called directly on a type without bringing the trait into scope. For example, given:
 
+<!-- compile-fail: hypothetical feature -->
 ```rust
 #[inherent]
 impl Bar for Foo { ... }
@@ -1774,7 +1775,7 @@ This RFC allows a `use` declaration to bring a trait's associated functions and 
 ```rust
 struct Inner;
 impl Inner {
-    pub fn method(&self, num: u32) -> u32 { num }
+    pub fn method_res(&self, num: u32) -> Option<u32> { Some(num) }
 }
 
 struct Wrapper {
@@ -1826,7 +1827,7 @@ pub struct Inner;
 
 impl Trait for Inner {
     fn method(&self, input: &str) -> String {
-        // impl
+        String::new()
     }
 }
 
@@ -1902,6 +1903,7 @@ We could implement a more advanced mechanism for inferring unsubstituted generic
 
 We could support desugaring for types and consts as follows:
 
+<!-- compile-fail: not yet supported -->
 ```rust
 impl Trait for S {
     reuse Trait::{Item, MAX, func} { self.0 }
