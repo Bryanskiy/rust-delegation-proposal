@@ -1534,7 +1534,7 @@ In feedback on [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406
 #### Why can target blocks be allowed without effective self parameters?
 
 TODO: explain the rationale.
-TODO: discuss future compatibility issues with identity in target blocks
+TODO drawback: discuss future compatibility issues with identity in target blocks
 
 ↩ [_Target block_](#target-block)
 
