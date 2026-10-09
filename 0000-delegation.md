@@ -766,6 +766,37 @@ Under these rules, statements with side effects (e.g., `dbg!(&self);`) execute o
 
 `ADJ` denotes the same set of adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref, and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make them match the callee's signature.
 
+<details>
+
+<summary> Example: Automatic adjustments, glob and list delegations</summary>
+
+```rust
+trait Trait {
+    fn static_f();
+    fn by_value(self);
+    fn by_ref(&self);
+    fn by_mut_ref(&mut self);
+}
+
+struct X<T>(T);
+impl<T: Trait> X<T> {
+    // List delegation.
+    // Target expression is automatically adjusted for each function
+    // and removed for function without receiver.
+    reuse <T as Trait>::{static_f, by_value as new_name} { self.0 }
+}
+
+struct X2<T>(T);
+impl<T: Trait> X2<T> {
+    // Glob delegation.
+    // Target expression is automatically adjusted for each function
+    // and removed for function without receiver.
+    reuse <T as Trait>::* { self.0 }
+}
+```
+
+</details>
+
 All remaining parameters, which are not effective self parameters, are forwarded unmodified. Method-call adjustments are not applied to them, although implicit coercions may still apply.
 
 The path `callee_path` is exactly as specified by the user, except that the generated function's own generic parameters are substituted as arguments to the final segment, rather than left to inference ([?](#why-are-the-delegation-resolutions-own-generic-parameters-substituted-as-arguments-to-the-final-segment)).
@@ -784,6 +815,33 @@ Self { _: callee_path(...) }
 `_` in this case refers to the single field of `Self`.
 If `Self` is not a struct (or union) with a single field, then an error will be reported.
 An error will also be reported if that field is inaccessible from the delegation's definition site (e.g., because of its visibility).
+
+<details>
+
+<summary> Example: Self type identification and wrapping of the return value</summary>
+
+```rust
+trait MyAdd {
+    fn add(self, other: Self) -> Self;
+}
+
+impl MyAdd for usize {
+    fn add(self, other: usize) -> usize { ... }
+}
+
+struct W(usize);
+reuse impl MyAdd for W { self.0 }
+
+// Desugaring:
+fn add(self: W, arg1: W) -> W {
+    // We detect that arguments are of type `Self` so we are
+    // forced to apply target expression and adjustments to all of them,
+    // next we wrap return value into a newtype.
+    W { 0: MyAdd::add(self.0, self.0) }
+}
+```
+
+</details>
 
 ## Drawbacks
 [drawbacks]: #drawbacks
