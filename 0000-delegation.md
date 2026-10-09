@@ -68,7 +68,7 @@ Delegation has long been discussed by the Rust community: it has motivated two p
 While forwarding to subobject methods remains the main motivating scenario, a sufficiently general mechanism for forwarding function calls can support other scenarios as well.
 - An inherent method on a type forwarding to a method from a trait implementation on the same type.
 - A "reexport on steroids" that adds attributes to an existing function definition.
-  - For example, target feature attributes. TODO: add an example from stdarch.
+  - For example, target feature attributes, like it often happens in [stdarch](https://github.com/rust-lang/stdarch).
 - Any other scenario that takes the general form of a function calling another function with limited argument transformation.
 
 This part of the motivation is a lesson drawn directly from the two prior attempts at delegation. Both [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) restricted delegation in some form, leaving multiple possible delegation patterns as future extensions. In both cases, the forward-compatibility concerns were never addressed. Therefore, in this proposal we want to explore the design space more thoroughly.
@@ -80,13 +80,6 @@ This RFC is quite long, and a few kinds of cross-references recur throughout it,
 - A ([?](#anchor)) link points to a rationale subsection under “Rationale and alternatives” explaining why a design decision was made the way it was. These are asides: skipping them does not affect your understanding of the feature itself, only of the reasoning behind a specific choice.
 - A [_text in italics_](#anchor) link points to another section of the RFC: material the current paragraph depends on.
 - A plain [text](url) link points to a resource outside this RFC, such as a pull request, issue, comment, crate, or page in the Rust Reference.
-
-The format of this RFC was inspired by RFC XXX (TODO: link).
-
-TODO: check links.</br>
-TODO: add notes on implementation experience and other topics. </br>
-TODO: add examples. </br>
-TODO: distinguish parts of the design we are confident in from parts that have been implemented but remain uncertain.
 
 ### Terminology
 
@@ -622,8 +615,9 @@ The following procedure is used for remapping each non-`Self` parent parameter (
 - If the parent context is a trait impl (`impl Trait<Args> for ...`), then all the parameter's uses are replaced with the corresponding argument in `Args`.
   - Any matching arguments in the callee path are ignored.
     - This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
-- Otherwise, if the callee's parent is an inherent impl, the parameter remains unsubstituted TODO.
 - Otherwise, if the callee's parent is a trait, the generic argument corresponding to the parameter is identified in the trait segment of the elaborated callee path.
+- Otherwise, if the callee's parent is an inherent impl, the corresponding parameter value is determined from results of the type-relative path resolution.
+    - When a type-relative path `Type<TypeArgs>::assoc` is resolved, it is tied to a specific impl block `impl<ImplParams> Type<ImplTypeArgs>` (the callee's parent) with a specific list of substitutions for `ImplParams`, even if that the `ImplParams` list does not *directly* correspond to the `TypeArgs` list. If the substitution is the parameter definition itself, then we treat is as an inference placeholder below.
 - If the generic argument is an inference placeholder, then uses of the parameter stay in place and remain unsubstituted.
   - Nested inference placeholders are not allowed.
 - If the generic argument is not an inference placeholder, then all uses of the parameter are replaced with that argument.
@@ -688,7 +682,7 @@ trait Trait {
 }
 
 impl Trait for Struct {
-    fn method(self, other: Struct) -> Struct { todo!() }
+    fn method(self, other: Struct) -> Struct { unimplemented!() }
 }
 ```
 Let's call such types in signatures "effective self types".
@@ -717,15 +711,11 @@ impl Struct {
 reuse Struct::method;
 ```
 
-TODO: future possibilities - allow users to opt in to marking types as effective self types, or use type equality checks and allow users to opt out.
-
 If a function parameter's type is an effective self type, possibly wrapped in one of the references or smart pointers mentioned in [items.associated.fn.method.self-ty](https://doc.rust-lang.org/reference/items/associated-items.html#r-items.associated.fn.method.self-ty), then let's call it an "effective self parameter" ([?](#why-are-specific-smart-pointers-used-for-detecting-effective-self-parameters)).
 If the function's return type is an effective self type, without any additional wrapping, let's call it a "self return type" ([?](#why-are-self-return-types-limited-to-bare-self-type)).
 
 In the generated function body, effective self parameters are converted using the delegation's target block, and self return types are converted using newtype wrapping.
-See the [body desugaring chapter](#desugaring-of-individual-delegation-body) for details.
-
-TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
+See the [_body desugaring chapter_](#desugaring-of-individual-delegation-body) for details.
 
 ### Desugaring of individual delegation: body
 
@@ -770,7 +760,31 @@ Suppose that the generated function has `N` effective self parameters. Then the 
 
 Under these rules, statements with side effects (e.g., `dbg!(&self);`) execute once per effective self parameter.
 
-TODO: example for debugging every effective self parameter
+<details>
+
+<summary> Example: debug logging any effective self parameter </summary>
+
+```rust
+trait BinOpLike {
+    fn bin_op(&self, rhs: &Self);
+}
+
+reuse impl BinOpLike for Wrapper {
+    dbg!(self);
+    self.inner
+}
+
+// Desugaring
+impl BinOpLike for Wrapper {
+    fn bin_op(&self, rhs: &Wrapper) {
+        dbg!(self);
+        dbg!(rhs);
+        BinOpLike::bin_op(self.inner, rhs.inner)
+    }
+}
+```
+
+</details>
 
 `ADJ` denotes the same set of adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref, and coercions ([?](#why-are-method-call-adjustments-applied-to-effective-self-parameters)). The difference is that the callee has already been resolved through the path, so these adjustments are not needed for method resolution. Instead, they are applied to the arguments to make them match the callee's signature.
 
@@ -854,11 +868,11 @@ fn add(self: W, arg1: W) -> W {
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simplest case, leaving complex transformations to manual coding or macros. This might limit its usefulness.
+Many cases of delegation require more than simple forwarding (e.g., transforming arguments or return values). This feature only handles the simple cases, leaving complex transformations to manual coding or macros. This might limit the feature's usefulness, but the rationale for this is given in the [_syntax budget section_](#rule-1-stay-within-the-syntax-budget).
 
 The delegation feature could potentially be implemented as a third-party library with compile‑time [_reflection_](#reflection) (if and when that becomes available).
 
-TODO: discuss forward compatibility when removing identity target blocks, using glob imports, or adding default bodies.
+TODO: collect remaining drawbacks from the rationale sections.
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -1117,6 +1131,7 @@ TODO: explain the rationale.
 #### Why are methods with default bodies included in glob delegation?
 
 TODO: explain the rationale.
+TODO drawback: discuss semver hazards from using glob delegations to trait items default bodies.
 
 ↩ [_Glob delegation_](#glob-delegation)
 
@@ -1270,7 +1285,7 @@ The function header comprises qualifiers such as `const`, `async`, `unsafe`, and
     - `const`: If the callee is `const` and the delegation item is not, there is no problem: a `const` function can be called from a non-`const` function. However, the delegation item cannot be called from a const context unless `const` is also specified on the delegation item.
     - `ABI`: A mismatch here does not prevent the call from compiling, but it is difficult to see where that would be useful, and the user usually would have to restate the ABI for the delegation item.
     - `unsafe`: Calling an `unsafe` function from a non-`unsafe` function requires wrapping the call in an `unsafe` block. We do not want this to happen silently, so the delegation item would have to be marked `unsafe`. Otherwise, the compiler would emit an error.
-    - `async`: Forwarding to an `async` callee from a non-`async` delegation item isn't possible without changing what gets generated. TODO
+    - `async`: Forwarding to an `async` callee from a non-`async` delegation item isn't possible without changing what gets generated.
 
 2. Inherit qualifiers from the delegation resolution.
 
@@ -1280,7 +1295,7 @@ The proposal chooses to inherit all function qualifiers from the delegation reso
 
 #### Why is delegation of variadic functions not supported?
 
-TODO: find the GitHub issue.
+There are pretty fundamental [implementability issues](https://github.com/rust-lang/rust/issues/127443) with passing through C variadic arguments.
 
 ↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
 
@@ -1463,7 +1478,7 @@ Here, `?K` denotes a parameter that has been copied but not remapped. There are 
 2. Infer the parameter from the surrounding context:
    1. From the target block: `typeof(self.map) == BTreeMap::<T, ()>`
 
-      We would need to type-check the function body before generating the full signature, which is not possible with the current compiler architecture. TODO: same problem as for inherent impls. Add link.
+      We would need to type-check the function body before generating the full signature, which is not possible with the current compiler architecture. Similar problems exist for delegating to [_type-relative paths_](#paths-and-name-resolution).
 
    2. The compiler could use a heuristic to substitute parameters defined in the implementation header (e.g., positional 1:1 matching or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated, or renamed.
 
@@ -1484,18 +1499,23 @@ TODO: explain the rationale.
 #### Why are effective self types not detected through type aliases or type equality?
 
 TODO: explain the rationale.
+TODO: future possibilities - allow users to opt in to marking types as effective self types, or use type equality checks and allow users to opt out.
+TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
 
 ↩ [_Effective self type identification_](#effective-self-type-identification)
 
 #### Why are specific smart pointers used for detecting effective self parameters?
 
 TODO: explain the rationale.
+TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
+TODO: think about [field projections](https://github.com/BennoLossin/rfcs/blob/field-projection-v2/text/3735-field-projections.md)
 
 ↩ [_Effective self type identification_](#effective-self-type-identification)
 
 #### Why are self return types limited to bare self type?
 
 TODO: explain the rationale.
+TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
 
 ↩ [_Effective self type identification_](#effective-self-type-identification)
 
@@ -1514,6 +1534,7 @@ In feedback on [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406
 #### Why can target blocks be allowed without effective self parameters?
 
 TODO: explain the rationale.
+TODO: discuss future compatibility issues with identity in target blocks
 
 ↩ [_Target block_](#target-block)
 
@@ -1542,7 +1563,8 @@ There are two possible ways to generate the call:
   path::name(..., self.get(x), ...,)
   ```
 
-TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600)
+Passing the whole block suppresses all the possible adjustments and moves the trailing expression out of the block, which is not what we want.
+The more detailed discussion of the choice can be found in [this github comment](https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600).
 
 ↩ [_Body desugaring_](#body-desugaring)
 
@@ -1640,8 +1662,6 @@ where
 
 ### Alternatives to this RFC
 
-TODO: think about https://github.com/BennoLossin/rfcs/blob/field-projection-v2/text/3735-field-projections.md
-
 #### Macros
 
 See [_Prior art: delegate_](#cratesiodelegate) and [_Prior art: ambassador_](#cratesioambassador) for a closer look at the two most widely used delegation crates.
@@ -1688,13 +1708,6 @@ Also see the [Rust Book](https://doc.rust-lang.org/book/ch18-01-what-is-oo.html#
 
 ## Prior art
 [prior-art]: #prior-art
-
-TODO: for each prior approach, explain at a high level how this RFC differs.
-
-- [_Delegation or similar mechanisms in other languages_](#delegation-or-similar-mechanisms-in-other-languages)
-- [_Related proposals in Rust_](#related-proposals-in-rust)
-- [_Crates_](#crates)
-- TODO: other discussions
 
 ### Delegation or similar mechanisms in other languages
 
@@ -1765,8 +1778,6 @@ func main() {
 
 ### Related proposals in Rust
 
-TODO: check https://github.com/GuillaumeGomez/rfcs/blob/derive-deref/text/0000-derive-deref.md
-
 #### [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) (2015, closed)
 
 Delegation was first proposed in [rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406). This RFC introduces new syntax within trait `impl` blocks, permitting a type to forward an entire trait implementation (or selected items) to a field or arbitrary expression that already implements that trait. The proposed syntax has the following forms:
@@ -1820,6 +1831,10 @@ Later in the PR discussion, [nikomatsakis proposed](https://github.com/rust-lang
 #### [rfcs#3591](https://github.com/rust-lang/rfcs/pull/3591) (2024, merged)
 
 This RFC allows a `use` declaration to bring a trait's associated functions and constants into scope by path, e.g., `use SomeTrait::some_fn;`. This is not delegation: `use Trait::func` creates a local name for an existing associated function and does not define a new item. However, the same use case can be expressed through the delegation feature.
+
+#### [rfcs#3911](https://github.com/rust-lang/rfcs/pull/3911) (2026, open)
+
+This RFC allow deriving an implementation of the `Deref` trait using `#[derive(Deref)]` on structs and enums, which allows emulating delegation with `Deref` coercions more conveniently.
 
 ### Crates
 
@@ -1960,7 +1975,8 @@ We could implement a more advanced mechanism for inferring unsubstituted generic
 
 ### Support for delegating types and consts
 
-We could support desugaring for types and consts as follows:
+We could support desugaring for types and consts as follows.
+It would allow using glob delegation and `reuse impl` more effectively, without manual overrides for types and constants.
 
 <!-- compile-fail: not yet supported -->
 ```rust
@@ -1977,12 +1993,11 @@ impl Trait for S {
 }
 ```
 
-However, there are two complications:
-1. Types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated function or constant called `name`.
+For associated constants the delegation rules should naturally follow from the function delegation rules, since constants are more or less equivalent to functions with zero parameters and return type matching the constant's type.
 
-   This can be solved by introducing a disambiguator for types. One of the suggestions in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use `fn`/`type`/`const` keywords.
-
-2. TODO: impl
+However, there are some complications.
+For example, types live in the type namespace, while functions and constants live in the value namespace. A single qualified path doesn't say which namespace to pull from, so `Trait::name` is ambiguous whenever `Trait` has both an associated type and an associated function or constant called `name`.
+This can be solved by introducing a disambiguator for types. One of the suggestions in [rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393) is to use `fn`/`type`/`const` keywords.
 
 For these reasons, we would like to postpone delegation of types and constants.
 
@@ -2004,8 +2019,6 @@ Resolving the prefix but not checking it for stability would be a compatibility 
 Several approaches could be considered for supporting type-relative paths:
 1. We could generate an incomplete body (e.g., without arguments), then use analysis passes in HIR to infer the missing information and complete body generation during lowering to MIR/THIR.
 2. We could lower everything except delegation items, run the analysis passes, and then finish lowering the delegation items.
-
-TODO: discuss query cycles.
 
 This would require substantial compiler refactoring, so we do not have a strong opinion on this.
 
