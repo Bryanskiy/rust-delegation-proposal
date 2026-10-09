@@ -94,6 +94,7 @@ The following terminology is frequently used in this proposal:
 
 - _delegation item_ - a new item kind introduced by this proposal, declared with the `reuse` keyword, that generates a function or method that forwards its arguments to the specified callee.
 - _target block_ - an optional block expression whose trailing expression transforms some of the generated function's arguments before those arguments are forwarded to the callee; usually, the transformed argument is the method receiver.
+- _target expression_ - the trailing expression of the target block, if it exists.
 - _parent context_ - the parent item in which the delegation item appears. This can be a module or block (for free functions), a trait implementation, an inherent implementation, or a trait definition (for associated functions).
 - _desugaring_ - transformation of a delegation item into a regular function definition with a signature and a body.
 - _renaming_ - the ability to give the generated function a name that differs from the callee's name.
@@ -605,9 +606,9 @@ The delegation resolution's signature may contain:
 
 The following procedure is used for remapping each own parameter:
 - The generic argument corresponding to the parameter is identified in the last segment of the elaborated callee path.
-- If the generic argument is an inference placeholder (`_` or `'_`), then both the generic parameter definition and its uses stay in place ([?](#why-are-inference-variables-allowed-in-paths)).
-  - Nested inference placeholders are not allowed ([?](#why-are-nested-inference-variables-not-allowed-in-paths)).
-- If the generic argument is not an inference placeholder, then the generic parameter's definition is eliminated from the generated function and all its uses are replaced with that argument ([?](#why-might-child-parameters-need-to-be-substituted)).
+- If the generic argument is an inference placeholder (`_` or `'_`), then both the generic parameter definition and its uses stay in place ([?](#why-are-inference-placeholders-allowed-in-paths)).
+  - Nested inference placeholders are not allowed ([?](#why-are-nested-inference-placeholders-not-allowed-in-paths)).
+- If the generic argument is not an inference placeholder, then the generic parameter's definition is eliminated from the generated function and all its uses are replaced with that argument ([?](#why-might-own-generic-parameters-need-to-be-substituted)).
 
 The following procedure is used for remapping the `Self` parent parameter:
 - If the parent context is an impl or a trait, then all the parameter's uses are replaced with the impl's or trait's self type.
@@ -627,7 +628,7 @@ The following procedure is used for remapping each non-`Self` parent parameter (
   - Nested inference placeholders are not allowed.
 - If the generic argument is not an inference placeholder, then all uses of the parameter are replaced with that argument.
 
-If any parent parameters in the signature or where clauses remain unsubstituted, an error is reported ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution)).
+If any parent parameters in the signature or where clauses remain unsubstituted, an error is reported ([?](#what-happens-if-unsubstituted-parent-parameters-remain-after-substitution)).
 
 <details>
 
@@ -701,7 +702,7 @@ trait BinOp<Rhs = Self> {
     fn bin_op(&self, rhs: &Rhs);
 }
 ```
-we also need to treat `Rhs` as a self type if it was obtained from the `Self` parameter default; otherwise, newtype conversions won't work correctly when delegating standard binary operators.
+we also need to treat `Rhs` as an effective self type if it was obtained from the `Self` parameter default; otherwise, newtype conversions won't work correctly when delegating standard binary operators.
 
 If the delegation resolution is an inherent method with `self`, then its corresponding type is considered an effective self type in the generated function.
 
@@ -737,7 +738,7 @@ If the generated function has no effective self parameters, then it's an error t
 
 If the target block is omitted, then no parameter transformations happen, and delegated functions without effective self parameters also work ([?](#why-can-the-block-expression-be-omitted)).
 
-The target block contains zero or more statements and an optional trailing expression.
+The target block contains zero or more statements and an optional trailing expression, called the target expression.
 If the trailing expression is omitted, then `self` is implicitly used as the trailing expression.
 
 #### Body desugaring
@@ -1255,9 +1256,9 @@ The function header comprises qualifiers such as `const`, `async`, `unsafe`, and
     - `unsafe`: Calling an `unsafe` function from a non-`unsafe` function requires wrapping the call in an `unsafe` block. We do not want this to happen silently, so the delegation item would have to be marked `unsafe`. Otherwise, the compiler would emit an error.
     - `async`: Forwarding to an `async` callee from a non-`async` delegation item isn't possible without changing what gets generated. TODO
 
-2. Inherit qualifiers from the callee.
+2. Inherit qualifiers from the delegation resolution.
 
-The proposal chooses to inherit all function qualifiers from the callee unchanged. The main problem with the first approach is verbosity. Matching the callee's qualifiers is essentially the only sensible choice, yet that approach would force users to repeat qualifiers for delegation items.
+The proposal chooses to inherit all function qualifiers from the delegation resolution unchanged. The main problem with the first approach is verbosity. Matching the delegation resolution's qualifiers is essentially the only sensible choice, yet that approach would force users to repeat qualifiers for delegation items.
 
 ↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
 
@@ -1267,7 +1268,7 @@ TODO: find the GitHub issue.
 
 ↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-signature)
 
-#### Why are inference variables allowed in paths?
+#### Why are inference placeholders allowed in paths?
 
 1. If substitution of own parameters is allowed, inference placeholders can be used to substitute only a subset of the parameters:
    ```rust
@@ -1285,7 +1286,7 @@ TODO: find the GitHub issue.
 
 ↩ [_Generics remapping_](#generics-remapping)
 
-#### Why are nested inference variables not allowed in paths?
+#### Why are nested inference placeholders not allowed in paths?
 
 > [!WARNING]
 >
@@ -1309,7 +1310,7 @@ fn bar<A, B>(x: HashMap<A, B>) {
 ↩ [_Generics remapping_](#generics-remapping)
 
 
-#### Why might child parameters need to be substituted?
+#### Why might own generic parameters need to be substituted?
 
 Consider the example:
 
@@ -1408,7 +1409,7 @@ reuse BTreeMap::<T, (), A>::contains_key as contains { self.map }
 
 ↩ [_Generics remapping_](#generics-remapping)
 
-#### What happens if undefined generic parameters remain after substitution?
+#### What happens if unsubstituted parent parameters remain after substitution?
 
 Consider the example:
 
@@ -1450,7 +1451,7 @@ Here, `?K` denotes a parameter that has been copied but not remapped. There are 
 
    2. The compiler could use a heuristic to substitute parameters defined in the implementation header (e.g., positional 1:1 matching or substituting parameters with the same names). But this approach is fragile and fails whenever generic parameters are reordered, partially instantiated, or renamed.
 
-3. We could generate a new parameter and substitute `?K` with it. This would not pass type checking in the example above, but it might be useful in other cases ([?](#what-happens-if-undefined-generic-parameters-remain-after-substitution-part-2)).
+3. We could generate a new parameter and substitute `?K` with it. This would not pass type checking in the example above, but it might be useful in other cases ([?](#what-happens-if-unsubstituted-parent-parameters-remain-after-substitution-part-2)).
 
 In this proposal, we suggest using the “report an error” option because it is the most conservative approach and requires generic arguments to be specified explicitly. Once the compiler architecture is sufficiently advanced, we can implement more sophisticated inference.
 
@@ -1522,13 +1523,13 @@ The first option should be chosen because otherwise the generated call may fail 
 
 ↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
 
-#### What happens if undefined generic parameters remain after substitution? Part 2.
+#### What happens if unsubstituted parent parameters remain after substitution? Part 2.
 
 > [!WARNING]
 >
-> The idea below is unconventional, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating an unsubstituted parent parameter as an error ([_Part 1_](#what-happens-if-undefined-generic-parameters-remain-after-substitution)) remains the better default.
+> The idea below is unconventional, and this RFC does not propose it. It is included for completeness only: we are not currently aware of a use case for it, and treating an unsubstituted parent parameter as an error ([_Part 1_](#what-happens-if-unsubstituted-parent-parameters-remain-after-substitution)) remains the better default.
 
-If an undefined generic parameter remains in the signature or where clauses after substitution, one possible alternative is to generate an additional generic parameter. Consider the example:
+If a parent parameter remains unsubstituted in the signature or where clauses after substitution, one possible alternative is to generate an additional generic parameter. Consider the example:
 
 ```rust
 trait Ord: Eq + PartialOrd<Self> {
@@ -1542,7 +1543,7 @@ fn min<T: Ord + Sized>(v1: T, v2: T) -> T {
 }
 ```
 
-Traits include an implicit `Self` parameter that can be modeled as a generic parameter `This: Trait`. If we allow parameters to be copied from the parent context, the `min` implementation could be replaced with `reuse Ord::min;`.
+Traits include an implicit `Self` parameter that can be modeled as a generic parameter `This: Trait`. If we allow parameters to be copied from the delegation resolution’s parent trait, the `min` implementation could be replaced with `reuse Ord::min;`.
 
 In principle, this could extend beyond `Self` to any parent parameter, but doing so raises multiple questions:
 
@@ -1660,7 +1661,7 @@ class Outer(inner: Inner):
 
 </details>
 
-Its selectors line up closely with this proposal's three delegation forms: a single selector corresponds to individual delegation, multiple selectors correspond to list delegation, and a wildcard selector (`*`) corresponds to glob delegation.
+Its selectors line up closely with this proposal's three function delegation forms: a single selector corresponds to individual delegation, multiple selectors correspond to list delegation, and a wildcard selector (`*`) corresponds to glob delegation.
 
 `x as y` renames a member on export, using the same `as` keyword that this RFC uses for renaming.
 
