@@ -436,12 +436,12 @@ Glob delegations are semantically allowed only inside implementations, and the p
 
 The set of names for which individual delegation items are produced is determined as follows:
 - The full set of names defined by the target trait in all namespaces is considered.
-- Names already explicitly defined inside the glob delegation's parent context (trait impl) are filtered out. "Explicitly" here means not by another glob delegation.
+- Names already explicitly defined inside the glob delegation's parent context (the impl) are filtered out ([?](#why-can-names-from-glob-delegations-be-overridden-by-explicit-items)). "Explicitly" here means not by another glob delegation.
 - If any of the remaining names refers to an associated type or constant, an error is reported for future compatibility with associated type and const delegation (see [_Future possibilities: Support for delegating types and consts_](#support-for-delegating-types-and-consts)).
 - Note: the above rules mean that a glob delegation can only be expanded after all macro invocations in its target trait and its parent impl have been expanded, except perhaps other glob delegations.
 
 Note that individual delegations are still generated for functions with default bodies in the target trait definition.
-This ensures that manual implementations of functions with default bodies are correctly forwarded to.
+This ensures that manual implementations of functions with default bodies are correctly forwarded to ([?](#why-are-methods-with-default-bodies-included-in-glob-delegation)).
 
 As with list delegations, target blocks, generic arguments, and other components are copied at the token-stream level, making glob delegation a macro feature.
 
@@ -501,7 +501,7 @@ Delegation items can also refer to other delegation items. If a cycle is encount
 Delegation paths are resolved in the value namespace, and if the path doesn't refer to a function or associated function, an error is reported.
 In particular, delegation for associated types and constants is not currently supported (see [_Future possibilities: Support for delegating types and consts_](#support-for-delegating-types-and-consts)).
 
-Type-relative paths are also supported, although support for them is currently limited.
+Type-relative paths are also supported, although support for them on nightly rustc is currently limited.
 
 > [!NOTE]
 >
@@ -532,7 +532,7 @@ Type-relative paths are also supported, although support for them is currently l
 > }
 > ```
 >
-> `Struct::to_string` resolves to `Trait::to_string`. However, since we cannot perform trait selection during lowering, we report an error. This limitation could potentially be addressed in the future. See [_Future possibilities: Supporting type-relative paths_](#supporting-type-relative-paths).
+> `Struct::to_string` resolves to `Trait::to_string`. However, since we cannot perform trait selection during lowering, we report an error. This limitation could potentially be addressed in the future, the current workaround is to use `Trait::to_string`. See [_Future possibilities: Supporting type-relative paths_](#supporting-type-relative-paths).
 
 ### Desugaring of individual delegation: signature
 
@@ -622,7 +622,7 @@ The following procedure is used for remapping each non-`Self` parent parameter (
 - If the parent context is a trait impl (`impl Trait<Args> for ...`), then all the parameter's uses are replaced with the corresponding argument in `Args`.
   - Any matching arguments in the callee path are ignored.
     - This is because the generated signature must match the corresponding trait method, while the delegation path may refer to a different item whose generic parameters do not necessarily correspond to those of the trait method.
-- Otherwise, if the callee's parent is an inherent impl, the parameter remains unsubstituted.
+- Otherwise, if the callee's parent is an inherent impl, the parameter remains unsubstituted TODO.
 - Otherwise, if the callee's parent is a trait, the generic argument corresponding to the parameter is identified in the trait segment of the elaborated callee path.
 - If the generic argument is an inference placeholder, then uses of the parameter stay in place and remain unsubstituted.
   - Nested inference placeholders are not allowed.
@@ -647,7 +647,7 @@ impl Wrapper {
 ```
 
 Step 0, immediately after desugaring but before remapping, looks like this:
-Copied but not yet substituted parameters (`T`) are written as `?T`.
+Copied but not yet substituted parameters (`T`) are written as `?T`, the same notation is used in the rationale sections as well.
 
 ```rust
 impl Wrapper {
@@ -663,7 +663,7 @@ impl Wrapper {
 After remapping, this becomes:
 ```rust
 impl Wrapper {
-    fn method<U>(self: &S, arg1: &?T, arg2: &U) {
+    fn method<U>(self: &Wrapper, arg1: &?T, arg2: &U) {
         Trait::<_>::method::<_>(&self.inner, arg1, arg2)
     }
 }
@@ -676,9 +676,9 @@ However, if we wrote `Trait::<u8>::method` instead of just `Trait::method`, then
 
 Also see [_Future possibilities: More sophisticated inference of generic parameters_](#more-sophisticated-inference-of-generic-parameters)
 
-#### Effective Self type identification
+#### Effective self type identification
 
-To increase the usefulness of delegation and provide better support for newtypes, we need to identify types that are "actually `Self`" in method signatures, not just for the `self` parameter but also for other parameters and the return type.
+To increase the usefulness of delegation and provide better support for newtypes, we need to identify types that are "actually `Self`" in method signatures, not just for the `self` parameter but also for other parameters and the return type ([?](#why-are-effective-self-types-identified-beyond-the-receiver)).
 
 For example, the occurrences of `Struct` in `other: Struct` and `-> Struct` in the following impl are "actually `Self`".
 
@@ -706,7 +706,7 @@ we also need to treat `Rhs` as an effective self type if it was obtained from th
 
 If the delegation resolution is an inherent method with `self`, then its corresponding type is considered an effective self type in the generated function.
 
-In all other cases, types in signatures are not considered effective self types. In particular, effective self types are *not* detected by tracking uses of the `Self` type alias in impls (as opposed to the `Self` parameter in traits) or by checking type equality.
+In all other cases, types in signatures are not considered effective self types. In particular, effective self types are *not* detected by tracking uses of the `Self` type alias in impls (as opposed to the `Self` parameter in traits) or by checking type equality ([?](#why-are-effective-self-types-not-detected-through-type-aliases-or-type-equality)).
 
 ```rust
 impl Struct {
@@ -719,11 +719,11 @@ reuse Struct::method;
 
 TODO: future possibilities - allow users to opt in to marking types as effective self types, or use type equality checks and allow users to opt out.
 
-If a function parameter's type is an effective self type, possibly wrapped in one of the references or smart pointers mentioned in [items.associated.fn.method.self-ty](https://doc.rust-lang.org/reference/items/associated-items.html#r-items.associated.fn.method.self-ty), then let's call it an "effective self parameter".
-If the function's return type is an effective self type, without any additional wrapping, let's call it a "self return type".
+If a function parameter's type is an effective self type, possibly wrapped in one of the references or smart pointers mentioned in [items.associated.fn.method.self-ty](https://doc.rust-lang.org/reference/items/associated-items.html#r-items.associated.fn.method.self-ty), then let's call it an "effective self parameter" ([?](#why-are-specific-smart-pointers-used-for-detecting-effective-self-parameters)).
+If the function's return type is an effective self type, without any additional wrapping, let's call it a "self return type" ([?](#why-are-self-return-types-limited-to-bare-self-type)).
 
 In the generated function body, effective self parameters are converted using the delegation's target block, and self return types are converted using newtype wrapping.
-See the body desugaring chapter for details.
+See the [body desugaring chapter](#desugaring-of-individual-delegation-body) for details.
 
 TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
 
@@ -734,12 +734,12 @@ TODO: future possibilities - extend the set of uses of the effective self type t
 The target block is an optional [block expression](https://doc.rust-lang.org/beta/reference/expressions/block-expr.html) ([?](#why-is-the-target-block-a-block-expression)) that is used to transform the delegation item's effective self parameters before they are forwarded to the resolved callee. There are no restrictions on the expressions that can be used inside the target block ([?](#why-is-the-target-block-unrestricted)).
 
 Inside that block, `self` refers to an effective self parameter that will be transformed.
-If the generated function has no effective self parameters, then it's an error to specify the target block, unless the current delegation item was defined as part of a list or glob delegation in which at least one other item has an effective self parameter.
+If the generated function has no effective self parameters, then it's an error to specify the target block, unless the current delegation item was defined as part of a list or glob delegation in which at least one other item has an effective self parameter ([?](#why-can-target-blocks-be-allowed-without-effective-self-parameters)).
 
-If the target block is omitted, then no parameter transformations happen, and delegated functions without effective self parameters also work ([?](#why-can-the-block-expression-be-omitted)).
+If the target block is omitted, then no parameter transformations happen, and delegated functions without effective self parameters also work.
 
 The target block contains zero or more statements and an optional trailing expression, called the target expression.
-If the trailing expression is omitted, then `self` is implicitly used as the trailing expression.
+If the trailing expression is omitted, then `self` is implicitly used as the trailing expression ([?](#why-is-self-the-implicit-target-expression)).
 
 #### Body desugaring
 
@@ -770,7 +770,9 @@ Suppose that the generated function has `N` effective self parameters. Then the 
 
 Under these rules, statements with side effects (e.g., `dbg!(&self);`) execute once per effective self parameter.
 
-`ADJ` denotes the same set of adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref, and coercions. The difference is that the callee has already been resolved through the path, so these adjustments are not needed for name resolution. Instead, they are applied to the arguments to make them match the callee's signature.
+TODO: example for debugging every effective self parameter
+
+`ADJ` denotes the same set of adjustments as for an ordinary [method call](https://doc.rust-lang.org/reference/expressions/method-call-expr.html) receiver: a sequence of autoderefs, an optional autoref, and coercions ([?](#why-are-method-call-adjustments-applied-to-effective-self-parameters)). The difference is that the callee has already been resolved through the path, so these adjustments are not needed for method resolution. Instead, they are applied to the arguments to make them match the callee's signature.
 
 <details>
 
@@ -818,7 +820,7 @@ If the generated function's return type is a self return type, then the `callee_
 Self { _: callee_path(...) }
 ```
 
-`_` in this case refers to the single field of `Self`.
+`_` in this case denotes the single field of `Self` ([?](#why-is-return-type-wrapping-restricted-to-single-field-structs)).
 If `Self` is not a struct (or union) with a single field, then an error will be reported.
 An error will also be reported if that field is inaccessible from the delegation's definition site (e.g., because of its visibility).
 
@@ -840,8 +842,8 @@ reuse impl MyAdd for W { self.0 }
 
 // Desugaring:
 fn add(self: W, arg1: W) -> W {
-    // We detect that arguments are of type `Self` so we are
-    // forced to apply target expression and adjustments to all of them,
+    // We detect that arguments are of type `Self` so we
+    // apply target expression and adjustments to all of them,
     // next we wrap return value into a newtype.
     W { 0: MyAdd::add(self.0, self.0) }
 }
@@ -987,7 +989,7 @@ Generality is particularly relevant in light of the existing prior art. The two 
 
 As established in the name resolution section, the callee may resolve to any of these kinds of functions. We see no reason to restrict the caller either (see [_guiding principles_](#design-guiding-principles)). Accordingly, this proposal supports every combination, rather than special-casing only the most common ones.
 
-↩ [_Reference-level explanation_](#reference-level-explanation)
+↩ [_Syntax_](#syntax)
 
 #### Why is visibility manually added instead of being copied from the callee?
 
@@ -995,7 +997,7 @@ A delegation item is a distinct item whose behavior may deliberately differ from
 
 Also see [_Unresolved questions: Should the visibility of the delegation item be restricted?_](#should-the-visibility-of-the-delegation-item-be-restricted)
 
-↩ [_Reference-level explanation_](#reference-level-explanation)
+↩ [_Syntax_](#syntax)
 
 #### Why are attributes manually added instead of being copied from the callee?
 
@@ -1003,7 +1005,7 @@ Attributes may affect diagnostics, linking, documentation, or the item's public 
 
 Also see [_Unresolved questions: Which attributes should be added by default?_](#which-attributes-should-be-added-by-default)
 
-↩ [_Reference-level explanation_](#reference-level-explanation)
+↩ [_Syntax_](#syntax)
 
 #### Why `reuse`?
 
@@ -1011,6 +1013,8 @@ The delegation syntax is generally modeled after `use` items to make it familiar
 The keyword is similar to `use` for the same reason: the callee function is not used directly, as with imports, but reused to create a new function.
 
 Alternative options like `delegate` or `forward` could also be considered, but they would benefit less from users' familiarity with `use` items.
+
+↩ [_Syntax_](#syntax)
 
 #### Why is list delegation supported?
 
@@ -1024,7 +1028,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    3. `export path . { sel_1, ..., sel_n }` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
 
-↩ [_Reference-level explanation_](#reference-level-explanation)
+↩ [_Syntax_](#syntax)
 
 #### Why is glob delegation supported?
 
@@ -1039,7 +1043,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    4. `#[delegate(Trait)]` delegates every method of `Trait` in [crates.io/ambassador](https://crates.io/crates/ambassador).
    5. `export name.*` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
-↩ [_Reference-level explanation_](#reference-level-explanation)
+↩ [_Syntax_](#syntax)
 
 #### Why is renaming supported?
 
@@ -1063,7 +1067,7 @@ The syntax cost of supporting it is negligible compared with the benefit. Specif
    2. In [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), renaming is a possible extension.
    3. `export A as B` in [Scala 3](https://docs.scala-lang.org/scala3/reference/other-new-features/export.html)
 
-↩ [_Reference-level explanation_](#reference-level-explanation)
+↩ [_Syntax_](#syntax)
 
 #### Why doesn't a delegation item provide syntax for introducing its own generics?
 
@@ -1077,7 +1081,7 @@ pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
 
 In principle, we could support this delegation pattern with syntax such as `reuse<T: ConvertVec, A: Allocator> T::to_vec;`. However, this would exceed our syntax budget (see [_guiding principles_](#design-guiding-principles)).
 
-↩ [_Reference-level explanation_](#reference-level-explanation)
+↩ [_Syntax_](#syntax)
 
 #### Why doesn't a delegation item provide syntax for argument or return-value transformations?
 
@@ -1087,7 +1091,7 @@ There are several transformations one might reasonably want from the delegation 
 
 To support these transformations in their most general form, delegation items would need something closer to preprocessing and postprocessing closures. We do not support these in the RFC, in accordance with our [_guiding principles_](#design-guiding-principles).
 
-↩ [_Reference-level explanation_](#reference-level-explanation)
+↩ [_Syntax_](#syntax)
 
 #### Why are glob delegations restricted?
 
@@ -1101,6 +1105,18 @@ Modules typically contain other items rather than just functions, and delegating
 Similarly, the motivation for glob delegation from modules is not very strong, and the complexity also doesn't pull its weight.
 
 List delegations list all their names explicitly, so they don't need any similar restrictions.
+
+↩ [_Glob delegation_](#glob-delegation)
+
+#### Why can names from glob delegations be overridden by explicit items?
+
+TODO: explain the rationale.
+
+↩ [_Glob delegation_](#glob-delegation)
+
+#### Why are methods with default bodies included in glob delegation?
+
+TODO: explain the rationale.
 
 ↩ [_Glob delegation_](#glob-delegation)
 
@@ -1459,23 +1475,53 @@ Also see [_Future possibilities: More sophisticated inference of generic paramet
 
 ↩ [_Generics remapping_](#generics-remapping)
 
+#### Why are effective self types identified beyond the receiver?
+
+TODO: explain the rationale.
+
+↩ [_Effective self type identification_](#effective-self-type-identification)
+
+#### Why are effective self types not detected through type aliases or type equality?
+
+TODO: explain the rationale.
+
+↩ [_Effective self type identification_](#effective-self-type-identification)
+
+#### Why are specific smart pointers used for detecting effective self parameters?
+
+TODO: explain the rationale.
+
+↩ [_Effective self type identification_](#effective-self-type-identification)
+
+#### Why are self return types limited to bare self type?
+
+TODO: explain the rationale.
+
+↩ [_Effective self type identification_](#effective-self-type-identification)
+
 #### Why is the target block a block expression?
 
 In contrast to [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406) and [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393), this RFC uses a block rather than a bare expression (e.g., a hypothetical `reuse prefix::name from expr;`) because a block expression can contain many statements. While having multiple statements during delegation is expected to be a niche use case, anchoring the syntax to the most general form is consistent with our [_guiding principles_](#design-guiding-principles).
 
-↩ [_Target block_](#desugaring-of-individual-delegation-body)
+↩ [_Target block_](#target-block)
 
 #### Why is the target block unrestricted?
 
 In feedback on [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406), it was suggested that delegation be limited to fields. This suggestion was adopted in [rust-lang/rfcs#2393](https://github.com/rust-lang/rfcs/pull/2393). However, we see no compelling reason for this restriction either from an implementation perspective or from the perspective of the language itself. Also see [_guiding principles_](#design-guiding-principles).
 
-↩ [_Target block_](#desugaring-of-individual-delegation-body)
+↩ [_Target block_](#target-block)
 
-#### Why can the block expression be omitted?
+#### Why can target blocks be allowed without effective self parameters?
 
-It provides a more ergonomic way to delegate free functions and methods without a receiver.
+TODO: explain the rationale.
 
-↩ [_Target block_](#desugaring-of-individual-delegation-body)
+↩ [_Target block_](#target-block)
+
+#### Why is `self` the implicit target expression?
+
+TODO: explain the rationale.
+
+↩ [_Target block_](#target-block)
 
 #### Why are statements not passed to the call?
 
@@ -1498,7 +1544,13 @@ There are two possible ways to generate the call:
 
 TODO: the choice (https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600)
 
-↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
+↩ [_Body desugaring_](#body-desugaring)
+
+#### Why are method-call adjustments applied to effective self parameters?
+
+TODO: explain the rationale.
+
+↩ [_Body desugaring_](#body-desugaring)
 
 #### Why are the delegation resolution's own generic parameters substituted as arguments to the final segment?
 
@@ -1521,7 +1573,13 @@ There are two possible ways to generate the call:
 
 The first option should be chosen because otherwise the generated call may fail with a type inference error.
 
-↩ [_Desugaring of individual delegation_](#desugaring-of-individual-delegation-body)
+↩ [_Body desugaring_](#body-desugaring)
+
+#### Why is return type wrapping restricted to single-field structs?
+
+TODO: explain the rationale.
+
+↩ [_Return type wrapping_](#return-type-wrapping)
 
 #### What happens if unsubstituted parent parameters remain after substitution? Part 2.
 
