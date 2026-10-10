@@ -98,7 +98,7 @@ The following terminology is frequently used in this proposal:
 
 This RFC draws on the experimental implementation tracked in [rust-lang/rust#118212](https://github.com/rust-lang/rust/issues/118212).
 
-Most of the examples in this proposal can be tried on nightly Rust.
+Many of the examples in this proposal can be tried on nightly Rust.
 
 The nightly implementation is [feature-complete](https://en.wikipedia.org/wiki/Software_release_life_cycle#Feature-complete) and may even accept more code than this RFC describes, since its primary purpose was experimentation.
 Different parts of the implementation may have different levels of design maturity and polish. If the feature is stabilized, stabilization will definitely take place in multiple stages.
@@ -135,6 +135,10 @@ impl<T: Hash> Hash for BTreeSet<T> {
 ```
 
 The `reuse` item is a delegation item that desugars into a function definition. `Hash::hash` is the callee to which the delegation item forwards, and `{ self.map }` is the target block: a small block whose trailing expression is applied to some of the callee’s arguments, usually the receiver.
+
+> [!NOTE]
+>
+> This example and some examples below can be expressed more efficiently using `derive` because they use traits from the standard library, but here we are using delegation for them to demonstrate what is possible.
 
 ### Paths and callee disambiguation
 
@@ -363,7 +367,7 @@ A delegation item starts with the `reuse` keyword ([?](#why-reuse)) and consists
 
 Suffixes come in three flavors: individual delegation, list delegation ([?](#why-is-list-delegation-supported)), and glob delegation ([?](#why-is-glob-delegation-supported)). The optional `as IDENTIFIER` clause allows the delegated function to be defined with a different name ([?](#why-is-renaming-supported)).
 
-A delegation item intentionally does not provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). A delegation item intentionally does not provide syntax for argument or return-value transformations ([?](#why-doesnt-a-delegation-item-provide-syntax-for-argument-or-return-value-transformations)).
+A delegation item intentionally does not provide syntax for introducing its own generics ([?](#why-doesnt-a-delegation-item-provide-syntax-for-introducing-its-own-generics)). A delegation item intentionally does not provide syntax for argument or return-value transformations, besides the target block ([?](#why-doesnt-a-delegation-item-provide-syntax-for-argument-or-return-value-transformations)).
 
 > [!NOTE]
 >
@@ -378,6 +382,7 @@ Impl delegation items have the form:
 ```
 
 This is the same syntax as for regular `impl` items, except that the block containing associated items is replaced with a block expression.
+Impl delegation items are accepted in all contexts where regular impl are accepted.
 
 ### List, glob, and impl delegation
 
@@ -877,10 +882,6 @@ TODO: collect remaining drawbacks from the rationale sections.
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-- [_Design guiding principles_](#design-guiding-principles)
-- [_Design decisions outlined in this RFC_](#design-decisions-outlined-in-this-rfc)
-- [_Alternatives to this RFC_](#alternatives-to-this-rfc)
-
 ### Design guiding principles
 
 A recurring question throughout this RFC is whether a particular delegation pattern should be supported. The following guiding principles inform individual design decisions.
@@ -1130,8 +1131,9 @@ TODO: explain the rationale.
 
 #### Why are methods with default bodies included in glob delegation?
 
-TODO: explain the rationale.
-TODO drawback: discuss semver hazards from using glob delegations to trait items default bodies.
+TODO important: explain the rationale. <br>
+TODO drawback: discuss semver hazards from using glob delegations to trait items default bodies. <br>
+TODO: standard derives tend to not generate impls for methods with default bodies (Clone, Hash, Ord, PartialEq, PartialOrd - no defaults, Eq - some defaults).
 
 ↩ [_Glob delegation_](#glob-delegation)
 
@@ -1359,7 +1361,7 @@ With the ability to provide generic arguments for own parameters, the `largest_m
 
 #### Why is the `Self` type not substituted?
 
-In the name resolution section, we provided an example of how the `Self` type can be used to disambiguate a callee without a receiver. However, `Self` does not participate in generic substitution; that is, it always refers to the `Self` type of the current context. Consider the example:
+In the name resolution section, we provided an example of how the `Self` type argument can be used to disambiguate a callee without a receiver. However, that argument does not participate in generic substitution; that is, the parent `Self` parameter always refers to the `Self` type of the current context. Consider the example:
 
 ```rust
 trait Iterator {
@@ -1498,23 +1500,23 @@ TODO: explain the rationale.
 
 #### Why are effective self types not detected through type aliases or type equality?
 
-TODO: explain the rationale.
-TODO: future possibilities - allow users to opt in to marking types as effective self types, or use type equality checks and allow users to opt out.
+TODO important: explain the rationale. <br>
+TODO: future possibilities - allow users to opt in to marking types as effective self types, or use type equality checks and allow users to opt out. <br>
 TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
 
 ↩ [_Effective self type identification_](#effective-self-type-identification)
 
 #### Why are specific smart pointers used for detecting effective self parameters?
 
-TODO: explain the rationale.
-TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
+TODO important: explain the rationale. <br>
+TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply. <br>
 TODO: think about [field projections](https://github.com/BennoLossin/rfcs/blob/field-projection-v2/text/3735-field-projections.md)
 
 ↩ [_Effective self type identification_](#effective-self-type-identification)
 
 #### Why are self return types limited to bare self type?
 
-TODO: explain the rationale.
+TODO important: explain the rationale. <br>
 TODO: future possibilities - extend the set of uses of the effective self type to which the conversions apply.
 
 ↩ [_Effective self type identification_](#effective-self-type-identification)
@@ -1533,7 +1535,7 @@ In feedback on [rust-lang/rfcs#1406](https://github.com/rust-lang/rfcs/pull/1406
 
 #### Why can target blocks be allowed without effective self parameters?
 
-TODO: explain the rationale.
+TODO important: explain the rationale. <br>
 TODO drawback: discuss future compatibility issues with identity in target blocks
 
 ↩ [_Target block_](#target-block)
@@ -1570,7 +1572,7 @@ The more detailed discussion of the choice can be found in [this github comment]
 
 #### Why are method-call adjustments applied to effective self parameters?
 
-TODO: explain the rationale.
+TODO important: explain the rationale.
 
 ↩ [_Body desugaring_](#body-desugaring)
 
@@ -1599,7 +1601,7 @@ The first option should be chosen because otherwise the generated call may fail 
 
 #### Why is return type wrapping restricted to single-field structs?
 
-TODO: explain the rationale.
+TODO important: explain the rationale.
 
 ↩ [_Return type wrapping_](#return-type-wrapping)
 
@@ -1630,6 +1632,8 @@ In principle, this could extend beyond `Self` to any parent parameter, but doing
 - Rust requires lifetime parameters to be declared before type and const parameters, which means copied generics may need to be reordered.
 - Default parameters are not permitted in functions. Therefore, either the default type must be used, or a new non-default parameter must be generated.
 - Bounds also need to be copied.
+
+This extension is implemented in nightly rustc, and the example below compiles.
 
 <details>
 
@@ -1952,7 +1956,7 @@ Taking this into consideration, several design choices are possible:
 2. The visibility of the generated function cannot exceed the visibility of the reused function. In other words, delegation may only preserve or reduce visibility, never increase it.
 3. The user explicitly controls visibility.
 
-We prefer to give the user full control while also adding a lint that prevents a generated function from having greater visibility than the callee.
+We prefer to give the user full control while also adding a lint that warns if a generated function reachable from other crates forwards to a function that is not reachable.
 
 ↩ [_Reference-level explanation_](#reference-level-explanation)
 
@@ -1970,6 +1974,8 @@ A shorter syntax that infers the callee from a bare method name could be layered
 ### More sophisticated inference of generic parameters
 
 We could implement a more advanced mechanism for inferring unsubstituted generic parameters, allowing users to specify fewer generic arguments explicitly.
+
+See ([?](#what-happens-if-unsubstituted-parent-parameters-remain-after-substitution)) and ([?](#what-happens-if-unsubstituted-parent-parameters-remain-after-substitution-part-2)) for more details.
 
 ↩ [_Generics remapping_](#generics-remapping)
 
